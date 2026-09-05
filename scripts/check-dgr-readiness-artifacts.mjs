@@ -14,8 +14,12 @@
  *    only a representative sample was checked or its own citation was not
  *    independently re-read; historical notes on truthfully downgraded items
  *    remain auditable without blocking readiness merely by existing;
- * 4. an APPROVED item must carry a non-pending named reviewer and an ISO
- *    review date in the same item block.
+ * 4. overlapping FR-bank / EN-package items must mirror the same current FR
+ *    governance state (FROZEN/GAP/PARTIAL/CONFLICT/DRAFT/etc.); presence of an
+ *    EN draft must never preserve a stale blanket FR status;
+ * 5. an APPROVED item must carry a non-pending named reviewer and an ISO
+ *    review date in the same item block, and table-based status registers may
+ *    not bypass that requirement.
  *
  * It does NOT:
  * - validate licensed IATA DGR text;
@@ -113,6 +117,47 @@ function assertApprovedHasReviewerAndDate(text, fn, artifactLabel) {
   }
 }
 
+function markdownTableCells(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return [];
+  return trimmed.slice(1, -1).split("|").map((cell) => cell.trim());
+}
+
+function assertTableApprovalsHaveReviewerAndDate(text, artifactLabel) {
+  const lines = text.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const headers = markdownTableCells(lines[i]);
+    if (!headers.length) continue;
+
+    const idIndex = headers.findIndex((header) => /^ID$/i.test(header));
+    const approvalIndex = headers.findIndex((header) => /^Approval$/i.test(header));
+    if (idIndex < 0 || approvalIndex < 0) continue;
+
+    const reviewerIndex = headers.findIndex((header) => /^(?:Qualified reviewer|Reviewer|Reviewed by)$/i.test(header));
+    const reviewDateIndex = headers.findIndex((header) => /^(?:Review date|Reviewed on)$/i.test(header));
+
+    // Skip the Markdown separator row, then inspect the contiguous table body.
+    for (let j = i + 2; j < lines.length; j += 1) {
+      const cells = markdownTableCells(lines[j]);
+      if (!cells.length) break;
+
+      const id = cells[idIndex] ?? "";
+      const approval = cells[approvalIndex] ?? "";
+      if (!/^Q-7\.(?:10|[1-9])-\d{3}\b/i.test(id) || !/^APPROVED\b/i.test(approval)) continue;
+
+      const reviewer = reviewerIndex >= 0 ? (cells[reviewerIndex] ?? "").trim() : "";
+      const reviewDate = reviewDateIndex >= 0 ? (cells[reviewDateIndex] ?? "").trim() : "";
+      const reviewerLooksPending = !reviewer || /pending|tbd|todo|reviewer\s*\+\s*date/i.test(reviewer);
+      const hasIsoDate = /^\d{4}-\d{2}-\d{2}\b/.test(reviewDate);
+
+      if (reviewerLooksPending || !hasIsoDate) {
+        fail(`${artifactLabel}: ${id} table row is APPROVED without explicit named reviewer + ISO review date columns`);
+      }
+    }
+  }
+}
+
 function hasRepresentativeEvidenceCaveat(text) {
   return (
     /(?:item['’]s\s+)?own specific citation was not independently re-read/i.test(text) ||
@@ -123,6 +168,57 @@ function hasRepresentativeEvidenceCaveat(text) {
 function latestFrStatus(blockText) {
   const matches = [...blockText.matchAll(/^\s*\*\*FR status:\*\*\s*(.+)$/gmi)];
   return matches.length ? matches.at(-1)[1].trim() : "";
+}
+
+function frStatusClass(value) {
+  const normalized = value
+    .replace(/[`*_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  if (!normalized) return "";
+  if (/FROZEN FR\s*\/\s*SOURCE VERIFIED/.test(normalized)) return "FROZEN FR / SOURCE VERIFIED";
+  if (/SOURCE CONFLICT/.test(normalized)) return "SOURCE CONFLICT";
+  if (/SOURCE GAP/.test(normalized)) return "SOURCE GAP";
+  if (/PARTIALLY CONFIRMED|PARTIAL(?:LY)? CONFIRMED/.test(normalized)) return "PARTIALLY CONFIRMED";
+  if (/STALE CITATION/.test(normalized)) return "STALE CITATION";
+  if (/NOT ATTEMPTED|UNATTEMPTED/.test(normalized)) return "NOT ATTEMPTED";
+  if (/\bDRAFT\b|SOURCE REQUIRED/.test(normalized)) return "DRAFT";
+  return "";
+}
+
+function frStatusById(text, fn) {
+  const result = new Map();
+  for (const block of itemBlocks(text, fn)) {
+    result.set(block.id, frStatusClass(latestFrStatus(block.text)));
+  }
+  return result;
+}
+
+function frStatusDriftItems(bankText, enText, fn) {
+  const bankStatuses = frStatusById(bankText, fn);
+  const enStatuses = frStatusById(enText, fn);
+  const drift = [];
+
+  for (const [id, bankStatus] of bankStatuses) {
+    if (!enStatuses.has(id)) continue;
+    const enStatus = enStatuses.get(id) ?? "";
+
+    if (!bankStatus) {
+      drift.push(`${id} (bank FR status unclassified/missing)`);
+      continue;
+    }
+    if (!enStatus) {
+      drift.push(`${id} (EN package FR status unclassified/missing; bank=${bankStatus})`);
+      continue;
+    }
+    if (bankStatus !== enStatus) {
+      drift.push(`${id} (bank=${bankStatus}; EN=${enStatus})`);
+    }
+  }
+
+  return drift;
 }
 
 function frozenRepresentativeEvidenceItems(text, fn) {
@@ -154,12 +250,14 @@ for (const fn of functions.slice(1)) {
 }
 
 const stage71 = readRequired("docs/DGR_STAGE_2B_STATUS.md");
+assertTableApprovalsHaveReviewerAndDate(stage71, "docs/DGR_STAGE_2B_STATUS.md");
 
 let totalBank = 0;
 let totalEn = 0;
 let totalMissing = 0;
 let totalExtra = 0;
 let totalProvenanceBlockers = 0;
+let totalFrStatusDrift = 0;
 
 for (const fn of functions) {
   const bankPath = `docs/DGR_PRODUCTION_BANK_${fn}.md`;
@@ -182,6 +280,7 @@ for (const fn of functions) {
   const missing = difference(canonicalBankIds, enIds);
   const extra = difference(enIds, canonicalBankIds);
   const provenanceBlockers = frozenRepresentativeEvidenceItems(bank, fn);
+  const frStatusDrift = frStatusDriftItems(bank, en, fn);
 
   if (bankDupes.length) fail(`${bankPath}: duplicate question headings: ${bankDupes.join(", ")}`);
   if (enDupes.length) fail(`${enPath}: duplicate EN question headings: ${enDupes.join(", ")}`);
@@ -197,25 +296,40 @@ for (const fn of functions) {
     fail(`${fn}: ${provenanceBlockers.length} FROZEN item(s) still rely on representative/non-item-specific evidence: ${provenanceBlockers.join(", ")}`);
   }
 
+  if (frStatusDrift.length > 0) {
+    fail(`${fn}: ${frStatusDrift.length} overlapping bank/EN item(s) have stale or missing mirrored FR status: ${frStatusDrift.join("; ")}`);
+  }
+
   assertApprovedHasReviewerAndDate(bank, fn, bankPath);
   assertApprovedHasReviewerAndDate(en, fn, enPath);
+  assertTableApprovalsHaveReviewerAndDate(bank, bankPath);
+  assertTableApprovalsHaveReviewerAndDate(en, enPath);
 
-  rows.push({ fn, bank: canonicalBankIds.length, en: enIds.length, missing: missing.length, extra: extra.length, provenanceBlockers: provenanceBlockers.length });
+  rows.push({
+    fn,
+    bank: canonicalBankIds.length,
+    en: enIds.length,
+    missing: missing.length,
+    extra: extra.length,
+    provenanceBlockers: provenanceBlockers.length,
+    frStatusDrift: frStatusDrift.length,
+  });
   totalBank += canonicalBankIds.length;
   totalEn += enIds.length;
   totalMissing += missing.length;
   totalExtra += extra.length;
   totalProvenanceBlockers += provenanceBlockers.length;
+  totalFrStatusDrift += frStatusDrift.length;
 }
 
 console.log("\nDGR/CBTA readiness artifact summary");
-console.log("Function | Bank IDs | EN IDs | Missing EN | Extra EN | Frozen provenance blockers");
-console.log("---------|----------|--------|------------|----------|---------------------------");
+console.log("Function | Bank IDs | EN IDs | Missing EN | Extra EN | Frozen provenance blockers | FR↔EN status drift");
+console.log("---------|----------|--------|------------|----------|----------------------------|-------------------");
 for (const row of rows) {
-  console.log(`${row.fn.padEnd(8)} | ${String(row.bank).padStart(8)} | ${String(row.en).padStart(6)} | ${String(row.missing).padStart(10)} | ${String(row.extra).padStart(8)} | ${String(row.provenanceBlockers).padStart(26)}`);
+  console.log(`${row.fn.padEnd(8)} | ${String(row.bank).padStart(8)} | ${String(row.en).padStart(6)} | ${String(row.missing).padStart(10)} | ${String(row.extra).padStart(8)} | ${String(row.provenanceBlockers).padStart(26)} | ${String(row.frStatusDrift).padStart(17)}`);
 }
-console.log("---------|----------|--------|------------|----------|---------------------------");
-console.log(`TOTAL    | ${String(totalBank).padStart(8)} | ${String(totalEn).padStart(6)} | ${String(totalMissing).padStart(10)} | ${String(totalExtra).padStart(8)} | ${String(totalProvenanceBlockers).padStart(26)}`);
+console.log("---------|----------|--------|------------|----------|----------------------------|-------------------");
+console.log(`TOTAL    | ${String(totalBank).padStart(8)} | ${String(totalEn).padStart(6)} | ${String(totalMissing).padStart(10)} | ${String(totalExtra).padStart(8)} | ${String(totalProvenanceBlockers).padStart(26)} | ${String(totalFrStatusDrift).padStart(17)}`);
 
 if (failed) {
   console.error("\nREADINESS ARTIFACT CHECK: FAIL");
