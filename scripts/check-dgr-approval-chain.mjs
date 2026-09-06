@@ -5,8 +5,8 @@
  *
  * This checker does not decide regulatory correctness and never approves a
  * question. It only rejects durable APPROVED claims that skip the repository's
- * documented source, qualified-FR-review, bilingual-review, or final-signoff
- * gates.
+ * documented source, qualified-FR-review, qualified bilingual-review, or
+ * final-signoff gates.
  */
 
 import fs from "node:fs";
@@ -32,6 +32,33 @@ function looksLikeFullName(value = "") {
   return !words.every((word) => generic.test(word));
 }
 
+function looksLikeDgrCredential(value = "") {
+  const text = normalize(value);
+  if (!text || isPlaceholder(text) || text.length < 3) return false;
+  return /\bDGR\b|\bCBTA\b|dangerous\s+goods|marchandises\s+dangereuses/i.test(text);
+}
+
+function isRealNonFutureIsoDate(value = "") {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 2000 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  if (
+    instant.getUTCFullYear() !== year ||
+    instant.getUTCMonth() !== month - 1 ||
+    instant.getUTCDate() !== day
+  ) return false;
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return instant.getTime() <= todayUtc;
+}
+
 function terminalFrSourceState(value = "") {
   const text = normalize(value).toUpperCase();
   if (!text) return false;
@@ -49,17 +76,23 @@ function completedReview(value, kind) {
 
   const date = body.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
   if (!date) return { ok: false, reason: `${kind.toUpperCase()} ISO review date missing` };
+  if (!isRealNonFutureIsoDate(date)) {
+    return { ok: false, reason: `${kind.toUpperCase()} review date is impossible or in the future` };
+  }
 
   const beforeDate = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
   const parts = beforeDate.split(/\s*,\s*/).filter(Boolean);
   const name = parts[0] ?? "";
   if (!looksLikeFullName(name)) return { ok: false, reason: `${kind.toUpperCase()} full reviewer name missing/placeholder` };
 
-  if (kind === "fr") {
-    const credential = parts.slice(1).join(", ").trim();
-    if (!credential || isPlaceholder(credential) || credential.length < 3) {
-      return { ok: false, reason: "FR reviewer role/credential missing" };
-    }
+  const credential = parts.slice(1).join(", ").trim();
+  if (!looksLikeDgrCredential(credential)) {
+    return {
+      ok: false,
+      reason: kind === "fr"
+        ? "FR reviewer DGR/CBTA role/credential missing"
+        : "EN reviewer bilingual DGR/CBTA role/credential missing",
+    };
   }
   return { ok: true };
 }
@@ -67,7 +100,7 @@ function completedReview(value, kind) {
 function finalApprovalComplete(value = "") {
   const text = normalize(value);
   const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
-  if (!isApproved(text) || !date) return false;
+  if (!isApproved(text) || !date || !isRealNonFutureIsoDate(date)) return false;
   const body = text.replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "");
   const name = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
   return looksLikeFullName(name);
@@ -123,7 +156,7 @@ function approvedRecordErrors(record) {
   if (!fr.ok) errors.push(`Gate 2 incomplete: ${fr.reason}`);
   const en = completedReview(record.en, "en");
   if (!en.ok) errors.push(`Gate 3 incomplete: ${en.reason}`);
-  if (!finalApprovalComplete(record.approval)) errors.push("Gate 4 accountable reviewer full name + ISO date missing");
+  if (!finalApprovalComplete(record.approval)) errors.push("Gate 4 accountable reviewer full name + real non-future ISO date missing");
   return errors;
 }
 
@@ -178,14 +211,18 @@ function expect(name, text, shouldFail) {
 }
 
 function fixtures() {
-  const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
+  const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
   const gap = valid.replace("Q-7.2-001", "Q-7.2-002").replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained");
   expect("valid-approved-chain", valid, false);
   expect("valid-source-gap-chain", gap, false);
   expect("draft-approved", valid.replace("FROZEN FR / SOURCE VERIFIED", "DRAFT — Tier A required"), true);
   expect("missing-fr-review", valid.replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", ""), true);
-  expect("missing-fr-credential", valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, 2026-09-06"), true);
-  expect("pending-en-review", valid.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
+  expect("missing-fr-credential", valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, Trainer, 2026-09-06"), true);
+  expect("pending-en-review", valid.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
+  expect("missing-en-credential", valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, 2026-09-06"), true);
+  expect("impossible-fr-date", valid.replaceAll("2026-09-06", "2026-02-31"), true);
+  expect("future-en-date", valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2999-01-01"), true);
+  expect("future-final-date", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2999-01-01"), true);
   expect("generic-final-reviewer", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Reviewer, 2026-09-06"), true);
   expect("ordinary-pending-item", `## Q-7.2-003\n\n**FR status:** DRAFT\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:** PENDING REVIEWER + DATE\n`, false);
   expect("table-approved-before-en-review", `| ID | FR status | Type | Current source basis | EN status | Approval |\n|---|---|---|---|---|---|\n| Q-7.3-001 | FROZEN FR / SOURCE VERIFIED | MCQ | fixture | BILINGUAL TECHNICAL REVIEW REQUIRED | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
