@@ -37,6 +37,10 @@ jobs:
       - name: Tier-A matrix policy regression fixtures
         run: node scripts/test-dgr-matrix-tier-a-policy.mjs
 
+      - name: Official-task coverage regression fixtures
+        if: always()
+        run: node scripts/test-dgr-official-task-coverage.mjs
+
       - name: Strict Tier-A matrix cross-field gate
         if: always()
         run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
