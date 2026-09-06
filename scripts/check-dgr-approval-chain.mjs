@@ -34,7 +34,8 @@ function looksLikeFullName(value = "") {
 
 function looksLikeDgrCredential(value = "") {
   const text = normalize(value);
-  if (!text || isPlaceholder(text) || text.length < 3) return false;
+  if (!text || text.length < 3) return false;
+  if (/(?:^|\b)(?:pending|tbd|todo|unknown|unnamed|à renseigner|a renseigner|non renseigné|non renseigne)(?:\b|$)|[<>]/i.test(text)) return false;
   return /\bDGR\b|\bCBTA\b|dangerous\s+goods|marchandises\s+dangereuses/i.test(text);
 }
 
