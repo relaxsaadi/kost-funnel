@@ -38,7 +38,9 @@ jobs:
         run: node scripts/test-dgr-matrix-tier-a-policy.mjs
 
       - name: Strict Tier-A matrix cross-field gate
+        if: always()
         run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
 
       - name: Full DGR readiness artifact gate
+        if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs
