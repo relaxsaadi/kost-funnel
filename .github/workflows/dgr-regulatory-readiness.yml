@@ -1,0 +1,44 @@
+name: DGR regulatory readiness
+
+on:
+  push:
+    branches:
+      - ai/dgr-stage2b-handoff
+    paths:
+      - "docs/DGR_**"
+      - "scripts/check-dgr-**"
+      - "scripts/test-dgr-**"
+      - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
+      - ".github/workflows/dgr-regulatory-readiness.yml"
+  pull_request:
+    paths:
+      - "docs/DGR_**"
+      - "scripts/check-dgr-**"
+      - "scripts/test-dgr-**"
+      - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
+      - ".github/workflows/dgr-regulatory-readiness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  regulatory-artifact-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tier-A matrix policy regression fixtures
+        run: node scripts/test-dgr-matrix-tier-a-policy.mjs
+
+      - name: Strict Tier-A matrix cross-field gate
+        run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
+
+      - name: Full DGR readiness artifact gate
+        run: node scripts/check-dgr-readiness-artifacts.mjs
