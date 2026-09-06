@@ -41,6 +41,10 @@ jobs:
         if: always()
         run: node scripts/test-dgr-official-task-coverage.mjs
 
+      - name: Review-state semantic regression fixtures
+        if: always()
+        run: node scripts/check-dgr-readiness-artifacts.mjs --test-review-state-policy
+
       - name: Strict Tier-A matrix cross-field gate
         if: always()
         run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
