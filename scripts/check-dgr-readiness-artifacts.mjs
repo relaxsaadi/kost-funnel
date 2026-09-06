@@ -332,6 +332,89 @@ function reviewerAndDateLooksComplete(value) {
   );
 }
 
+function normalizedGovernanceState(value) {
+  return value
+    .replace(/[`*_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function isPositiveFrVerificationState(value) {
+  const normalized = normalizedGovernanceState(value);
+  return Boolean(
+    /^FROZEN FR\s*\/\s*SOURCE VERIFIED\b/.test(normalized) ||
+    /^FR SOURCE VERIFIED\b/.test(normalized) ||
+    /^SOURCE VERIFIED\b/.test(normalized) ||
+    /^VERIFIED\b/.test(normalized)
+  );
+}
+
+function isPositiveEnReviewState(value) {
+  const normalized = normalizedGovernanceState(value);
+  return Boolean(
+    /^(?:EN\s+)?REVIEWED\b/.test(normalized) ||
+    /^(?:COMPLETE|COMPLETED|APPROVED)\b/.test(normalized) ||
+    /^BILINGUAL(?: TECHNICAL)? REVIEW (?:COMPLETE|COMPLETED)\b/.test(normalized)
+  );
+}
+
+function runReviewStateRegressionFixtures() {
+  const frNegative = [
+    "DRAFT",
+    "DRAFT / NOT YET VERIFIED",
+    "NOT YET VERIFIED",
+    "SOURCE REQUIRED",
+    "SOURCE GAP",
+    "SOURCE CONFLICT",
+    "STALE CITATION",
+    "PARTIALLY CONFIRMED",
+  ];
+  const enNegative = [
+    "NOT YET REVIEWED",
+    "BILINGUAL TECHNICAL REVIEW REQUIRED",
+    "PENDING",
+    "DRAFT",
+  ];
+  const frPositive = [
+    "FROZEN FR / SOURCE VERIFIED",
+    "FR SOURCE VERIFIED",
+    "SOURCE VERIFIED",
+    "VERIFIED",
+  ];
+  const enPositive = [
+    "REVIEWED",
+    "EN REVIEWED",
+    "COMPLETED",
+    "COMPLETE",
+    "APPROVED",
+    "BILINGUAL TECHNICAL REVIEW COMPLETED",
+  ];
+
+  for (const state of frNegative) {
+    if (isPositiveFrVerificationState(state)) {
+      throw new Error(`FR negative state misclassified as positive: ${state}`);
+    }
+  }
+  for (const state of enNegative) {
+    if (isPositiveEnReviewState(state)) {
+      throw new Error(`EN negative state misclassified as positive: ${state}`);
+    }
+  }
+  for (const state of frPositive) {
+    if (!isPositiveFrVerificationState(state)) {
+      throw new Error(`FR positive state misclassified as negative: ${state}`);
+    }
+  }
+  for (const state of enPositive) {
+    if (!isPositiveEnReviewState(state)) {
+      throw new Error(`EN positive state misclassified as negative: ${state}`);
+    }
+  }
+
+  console.log("DGR review-state semantic regression fixtures: PASS");
+}
+
 function isExplicitNonVerifiedEvidence(value) {
   return /SOURCE GAP|SOURCE CONFLICT|NOT YET VERIFIED|STALE CITATION|PARTIALLY CONFIRMED|\bDRAFT\b|SOURCE REQUIRED/i.test(value);
 }
@@ -426,10 +509,10 @@ function parseSourceCompetencyMatrix(text, fn, artifactLabel) {
         fail(`${artifactLabel}: task ${taskId}: ${error}`);
       }
 
-      if (/FROZEN|SOURCE VERIFIED|\bVERIFIED\b/i.test(frState) && !reviewerAndDateLooksComplete(frVerifier)) {
+      if (isPositiveFrVerificationState(frState) && !reviewerAndDateLooksComplete(frVerifier)) {
         fail(`${artifactLabel}: task ${taskId} claims FR verification without a named verifier + ISO date`);
       }
-      if (/COMPLETE|COMPLETED|\bREVIEWED\b|\bAPPROVED\b/i.test(enState) && !reviewerAndDateLooksComplete(enReviewer)) {
+      if (isPositiveEnReviewState(enState) && !reviewerAndDateLooksComplete(enReviewer)) {
         fail(`${artifactLabel}: task ${taskId} claims completed EN review without a named reviewer + ISO date`);
       }
 
@@ -472,6 +555,11 @@ function parseSourceCompetencyMatrix(text, fn, artifactLabel) {
   }
 
   return { tasks: uniqueSorted(tasks), questionIds: uniqueSorted(questionIds) };
+}
+
+if (process.argv.includes("--test-review-state-policy")) {
+  runReviewStateRegressionFixtures();
+  process.exit(0);
 }
 
 // Presence checks. Function 7.1 has a recovered Stage 2A/pilot history rather
