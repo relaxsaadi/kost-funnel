@@ -3,23 +3,10 @@
 /**
  * Fail-closed DGR/CBTA approval-chain guard.
  *
- * This checker does not decide regulatory correctness and does not approve
- * questions. It only prevents a durable `APPROVED` claim from appearing
- * before the repository's documented four-gate sign-off chain is complete.
- *
- * Required before APPROVED:
- *  1. Gate 1: terminal FR source state (`FROZEN FR / SOURCE VERIFIED` or
- *     the explicitly governed `FR SOURCE GAP CONFIRMED` case);
- *  2. Gate 2: `FR TECHNICAL REVIEW COMPLETE` with full reviewer name,
- *     role/credential and ISO date;
- *  3. Gate 3: `BILINGUAL TECHNICAL REVIEW COMPLETE` with full reviewer name
- *     and ISO date;
- *  4. Gate 4: `APPROVED — <full name>, <YYYY-MM-DD>`.
- *
- * It scans both item blocks and Markdown status tables, and also requires an
- * approved ID to be consistently approved in its bank/status artifact and
- * its separate EN review package. No reviewer identity or qualification is
- * inferred from an automated agent, role label, ANAC, IATA, or KOST name.
+ * This checker does not decide regulatory correctness and never approves a
+ * question. It only rejects durable APPROVED claims that skip the repository's
+ * documented source, qualified-FR-review, bilingual-review, or final-signoff
+ * gates.
  */
 
 import fs from "node:fs";
@@ -29,18 +16,11 @@ const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
 const idPattern = /^Q-7\.(?:10|[1-9])-\d{3}$/i;
 
-function normalize(value = "") {
-  return value.replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function isApproved(value = "") {
-  return /^APPROVED\b/i.test(normalize(value));
-}
+const normalize = (value = "") => value.replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
+const isApproved = (value = "") => /^APPROVED\b/i.test(normalize(value));
 
 function isPlaceholder(value = "") {
-  return /(?:^|\b)(?:pending|tbd|todo|unknown|unnamed|reviewer|name|credential|qualification|à renseigner|a renseigner|non renseigné|non renseigne)(?:\b|$)|[<>]/i.test(
-    normalize(value),
-  );
+  return /(?:^|\b)(?:pending|tbd|todo|unknown|unnamed|reviewer|name|credential|qualification|à renseigner|a renseigner|non renseigné|non renseigne)(?:\b|$)|[<>]/i.test(normalize(value));
 }
 
 function looksLikeFullName(value = "") {
@@ -48,267 +28,169 @@ function looksLikeFullName(value = "") {
   if (!text || isPlaceholder(text)) return false;
   const words = text.match(/[\p{L}][\p{L}'’.-]*/gu) ?? [];
   if (words.length < 2) return false;
-  const genericOnly = /^(?:IATA|ANAC|KOST|reviewer|instructor|auditor|admin|administrator|team|staff|operator)$/i;
-  return !words.every((word) => genericOnly.test(word));
-}
-
-function hasIsoDate(value = "") {
-  return /\b\d{4}-\d{2}-\d{2}\b/.test(value);
+  const generic = /^(?:IATA|ANAC|KOST|reviewer|instructor|auditor|admin|administrator|team|staff|operator)$/i;
+  return !words.every((word) => generic.test(word));
 }
 
 function terminalFrSourceState(value = "") {
   const text = normalize(value).toUpperCase();
   if (!text) return false;
-  if (/SOURCE CONFLICT|PARTIALLY CONFIRMED|STALE CITATION|\bDRAFT\b|SOURCE REQUIRED|NOT YET VERIFIED/.test(text)) {
-    return false;
-  }
+  if (/SOURCE CONFLICT|PARTIALLY CONFIRMED|STALE CITATION|\bDRAFT\b|SOURCE REQUIRED|NOT YET VERIFIED/.test(text)) return false;
   return /^FROZEN FR\s*\/\s*SOURCE VERIFIED\b/.test(text) || /^FR SOURCE GAP CONFIRMED\b/.test(text);
 }
 
-function parseReviewedByAnnotation(status, marker, requireCredential) {
-  const normalized = normalize(status);
-  const markerRe = marker === "fr"
-    ? /FR TECHNICAL REVIEW COMPLETE\s*\(([^)]*)\)/i
-    : /BILINGUAL TECHNICAL REVIEW COMPLETE(?:D)?\s*\(([^)]*)\)/i;
-  const match = normalized.match(markerRe);
-  if (!match) return { ok: false, reason: `${marker === "fr" ? "FR" : "EN"} review completion marker missing` };
-
-  const body = match[1].replace(/^\s*reviewed by\s+/i, "").trim();
-  if (!/^reviewed by\b/i.test(match[1].trim())) {
-    return { ok: false, reason: `${marker === "fr" ? "FR" : "EN"} review does not identify who reviewed it` };
-  }
+function completedReview(value, kind) {
+  const text = normalize(value);
+  const re = kind === "fr"
+    ? /FR TECHNICAL REVIEW COMPLETE\s*\(reviewed by\s+([^)]*)\)/i
+    : /BILINGUAL TECHNICAL REVIEW COMPLETE(?:D)?\s*\(reviewed by\s+([^)]*)\)/i;
+  const body = text.match(re)?.[1]?.trim() ?? "";
+  if (!body) return { ok: false, reason: `${kind.toUpperCase()} completion marker/reviewer missing` };
 
   const date = body.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
-  if (!date) return { ok: false, reason: `${marker === "fr" ? "FR" : "EN"} review ISO date missing` };
+  if (!date) return { ok: false, reason: `${kind.toUpperCase()} ISO review date missing` };
 
   const beforeDate = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
   const parts = beforeDate.split(/\s*,\s*/).filter(Boolean);
   const name = parts[0] ?? "";
-  if (!looksLikeFullName(name)) {
-    return { ok: false, reason: `${marker === "fr" ? "FR" : "EN"} review does not contain a non-placeholder full reviewer name` };
-  }
+  if (!looksLikeFullName(name)) return { ok: false, reason: `${kind.toUpperCase()} full reviewer name missing/placeholder` };
 
-  if (requireCredential) {
+  if (kind === "fr") {
     const credential = parts.slice(1).join(", ").trim();
     if (!credential || isPlaceholder(credential) || credential.length < 3) {
-      return { ok: false, reason: "FR technical review is missing the reviewer's role/credential" };
+      return { ok: false, reason: "FR reviewer role/credential missing" };
     }
   }
-
   return { ok: true };
 }
 
-function finalApprovalLooksComplete(value = "") {
+function finalApprovalComplete(value = "") {
   const text = normalize(value);
-  if (!isApproved(text)) return false;
   const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
-  if (!date) return false;
-  const beforeDate = text
-    .replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "")
-    .slice(0, text.replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "").indexOf(date))
-    .replace(/[;,\-–—]+\s*$/g, "")
-    .trim();
-  return looksLikeFullName(beforeDate);
+  if (!isApproved(text) || !date) return false;
+  const body = text.replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "");
+  const name = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
+  return looksLikeFullName(name);
 }
 
-function fieldFromBlock(block, label) {
+function field(block, label) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = block.match(new RegExp(`^\\s*\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"));
-  return match?.[1]?.trim() ?? "";
+  return block.match(new RegExp(`^\\s*\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"))?.[1]?.trim() ?? "";
 }
 
-function itemBlockRecords(text, artifact, kind) {
-  const headingRe = /^#{2,4}\s+(Q-7\.(?:10|[1-9])-\d{3})\b.*$/gmi;
-  const matches = [...text.matchAll(headingRe)];
-  return matches.map((match, index) => {
+function itemRecords(text, artifact, kind) {
+  const re = /^#{2,4}\s+(Q-7\.(?:10|[1-9])-\d{3})\b.*$/gmi;
+  const matches = [...text.matchAll(re)];
+  return matches.map((match, i) => {
     const start = match.index ?? 0;
-    const end = index + 1 < matches.length ? (matches[index + 1].index ?? text.length) : text.length;
+    const end = i + 1 < matches.length ? (matches[i + 1].index ?? text.length) : text.length;
     const block = text.slice(start, end);
-    return {
-      id: match[1].toUpperCase(),
-      frStatus: fieldFromBlock(block, "FR status"),
-      enStatus: fieldFromBlock(block, "EN status"),
-      approval: fieldFromBlock(block, "Approval"),
-      artifact,
-      kind,
-      format: "item",
-    };
+    return { id: match[1].toUpperCase(), fr: field(block, "FR status"), en: field(block, "EN status"), approval: field(block, "Approval"), artifact, kind, format: "item" };
   });
 }
 
-function markdownCells(line) {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return [];
-  return trimmed.slice(1, -1).split("|").map((cell) => cell.trim());
+function cells(line) {
+  const t = line.trim();
+  return t.startsWith("|") && t.endsWith("|") ? t.slice(1, -1).split("|").map((v) => v.trim()) : [];
 }
 
 function tableRecords(text, artifact, kind) {
   const lines = text.split(/\r?\n/);
-  const records = [];
-
+  const out = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const headers = markdownCells(lines[i]);
-    if (!headers.length) continue;
-    const normalized = headers.map((header) => normalize(header).toLowerCase());
-    const idIndex = normalized.indexOf("id");
-    const frIndex = normalized.indexOf("fr status");
-    const enIndex = normalized.indexOf("en status");
-    const approvalIndex = normalized.indexOf("approval");
-    if ([idIndex, frIndex, enIndex, approvalIndex].some((index) => index < 0)) continue;
-
-    const separator = markdownCells(lines[i + 1] ?? "");
-    if (!separator.length) continue;
-
+    const headers = cells(lines[i]);
+    const h = headers.map((v) => normalize(v).toLowerCase());
+    const idx = { id: h.indexOf("id"), fr: h.indexOf("fr status"), en: h.indexOf("en status"), approval: h.indexOf("approval") };
+    if (Object.values(idx).some((v) => v < 0) || !cells(lines[i + 1] ?? "").length) continue;
     for (let j = i + 2; j < lines.length; j += 1) {
-      const cells = markdownCells(lines[j]);
-      if (!cells.length) break;
-      const id = normalize(cells[idIndex] ?? "").toUpperCase();
+      const row = cells(lines[j]);
+      if (!row.length) break;
+      const id = normalize(row[idx.id] ?? "").toUpperCase();
       if (!idPattern.test(id)) continue;
-      records.push({
-        id,
-        frStatus: cells[frIndex] ?? "",
-        enStatus: cells[enIndex] ?? "",
-        approval: cells[approvalIndex] ?? "",
-        artifact,
-        kind,
-        format: "table",
-      });
+      out.push({ id, fr: row[idx.fr] ?? "", en: row[idx.en] ?? "", approval: row[idx.approval] ?? "", artifact, kind, format: "table" });
     }
   }
-
-  return records;
+  return out;
 }
 
-function recordsFromText(text, artifact, kind) {
-  return [...itemBlockRecords(text, artifact, kind), ...tableRecords(text, artifact, kind)];
-}
+const recordsFromText = (text, artifact, kind) => [...itemRecords(text, artifact, kind), ...tableRecords(text, artifact, kind)];
 
-function validateApprovedRecord(record) {
+function approvedRecordErrors(record) {
+  if (!isApproved(record.approval)) return [];
   const errors = [];
-  if (!isApproved(record.approval)) return errors;
-
-  if (!terminalFrSourceState(record.frStatus)) {
-    errors.push("Gate 1 is not in a permitted terminal FR source state");
-  }
-
-  const frReview = parseReviewedByAnnotation(record.frStatus, "fr", true);
-  if (!frReview.ok) errors.push(`Gate 2 incomplete: ${frReview.reason}`);
-
-  const enReview = parseReviewedByAnnotation(record.enStatus, "en", false);
-  if (!enReview.ok) errors.push(`Gate 3 incomplete: ${enReview.reason}`);
-
-  if (!finalApprovalLooksComplete(record.approval)) {
-    errors.push("Gate 4 APPROVED field lacks a non-placeholder full accountable-reviewer name + ISO date");
-  }
-
+  if (!terminalFrSourceState(record.fr)) errors.push("Gate 1 terminal FR source state missing");
+  const fr = completedReview(record.fr, "fr");
+  if (!fr.ok) errors.push(`Gate 2 incomplete: ${fr.reason}`);
+  const en = completedReview(record.en, "en");
+  if (!en.ok) errors.push(`Gate 3 incomplete: ${en.reason}`);
+  if (!finalApprovalComplete(record.approval)) errors.push("Gate 4 accountable reviewer full name + ISO date missing");
   return errors;
 }
 
-function validateRecords(records) {
+function validate(records, crossArtifact = true) {
   const errors = [];
-
   for (const record of records) {
-    for (const error of validateApprovedRecord(record)) {
-      errors.push(`${record.artifact}: ${record.id} (${record.format}) — ${error}`);
-    }
+    for (const error of approvedRecordErrors(record)) errors.push(`${record.artifact}: ${record.id} (${record.format}) — ${error}`);
   }
+  if (!crossArtifact) return errors;
 
   const byId = new Map();
-  for (const record of records) {
-    if (!byId.has(record.id)) byId.set(record.id, []);
-    byId.get(record.id).push(record);
+  for (const record of records) (byId.get(record.id) ?? (byId.set(record.id, []), byId.get(record.id))).push(record);
+  for (const [id, set] of byId) {
+    if (!set.some((r) => isApproved(r.approval))) continue;
+    const explicit = set.filter((r) => normalize(r.approval));
+    const stale = explicit.filter((r) => !isApproved(r.approval));
+    if (stale.length) errors.push(`${id}: APPROVED conflicts with pending/non-approved duplicate record(s): ${stale.map((r) => `${r.artifact} (${normalize(r.approval)})`).join("; ")}`);
+    if (!set.some((r) => r.kind === "bank")) errors.push(`${id}: APPROVED has no durable bank/status record`);
+    if (!set.some((r) => r.kind === "en")) errors.push(`${id}: APPROVED has no separate EN review-package record`);
   }
-
-  for (const [id, idRecords] of byId) {
-    if (!idRecords.some((record) => isApproved(record.approval))) continue;
-
-    const explicitApprovalRecords = idRecords.filter((record) => normalize(record.approval));
-    const inconsistent = explicitApprovalRecords.filter((record) => !isApproved(record.approval));
-    if (inconsistent.length) {
-      errors.push(
-        `${id}: APPROVED is inconsistent with pending/non-approved duplicate record(s): ${inconsistent
-          .map((record) => `${record.artifact} (${record.format}: ${normalize(record.approval)})`)
-          .join("; ")}`,
-      );
-    }
-
-    if (!idRecords.some((record) => record.kind === "bank")) {
-      errors.push(`${id}: APPROVED has no durable production-bank/status record`);
-    }
-    if (!idRecords.some((record) => record.kind === "en")) {
-      errors.push(`${id}: APPROVED has no separate EN review-package record`);
-    }
-  }
-
   return errors;
 }
 
-function readExisting(relativePath) {
-  const absolute = path.join(root, relativePath);
-  if (!fs.existsSync(absolute)) return "";
-  return fs.readFileSync(absolute, "utf8");
+function read(relative) {
+  const p = path.join(root, relative);
+  return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
 }
 
-function runRepositoryCheck() {
+function repositoryCheck() {
   const records = [];
-  const stagePath = "docs/DGR_STAGE_2B_STATUS.md";
-  records.push(...recordsFromText(readExisting(stagePath), stagePath, "bank"));
-
+  records.push(...recordsFromText(read("docs/DGR_STAGE_2B_STATUS.md"), "docs/DGR_STAGE_2B_STATUS.md", "bank"));
   for (const fn of functions) {
-    const bankPath = `docs/DGR_PRODUCTION_BANK_${fn}.md`;
-    const enPath = `docs/DGR_EN_REVIEW_PACKAGE_${fn}.md`;
-    records.push(...recordsFromText(readExisting(bankPath), bankPath, "bank"));
-    records.push(...recordsFromText(readExisting(enPath), enPath, "en"));
+    const bank = `docs/DGR_PRODUCTION_BANK_${fn}.md`;
+    const en = `docs/DGR_EN_REVIEW_PACKAGE_${fn}.md`;
+    records.push(...recordsFromText(read(bank), bank, "bank"));
+    records.push(...recordsFromText(read(en), en, "en"));
   }
-
-  const errors = validateRecords(records);
+  const errors = validate(records, true);
   if (errors.length) {
-    for (const error of errors) console.error(`ERROR: ${error}`);
+    errors.forEach((e) => console.error(`ERROR: ${e}`));
     console.error(`\nDGR APPROVAL-CHAIN CHECK: FAIL (${errors.length} issue(s))`);
     process.exit(1);
   }
-
-  const approvedIds = [...new Set(records.filter((record) => isApproved(record.approval)).map((record) => record.id))];
-  console.log(`DGR APPROVAL-CHAIN CHECK: PASS (${approvedIds.length} APPROVED item(s) observed)`);
-  console.log("PASS means only that any durable APPROVED claims satisfy the recorded gate chain; it does not prove regulatory correctness or ANAC/IATA approval.");
+  const approved = new Set(records.filter((r) => isApproved(r.approval)).map((r) => r.id));
+  console.log(`DGR APPROVAL-CHAIN CHECK: PASS (${approved.size} APPROVED item(s) observed)`);
+  console.log("PASS validates only the recorded sign-off chain; it does not prove regulatory correctness or ANAC/IATA approval.");
 }
 
-function expectFixture(name, text, expectedErrors) {
-  const records = recordsFromText(text, `${name}.md`, "bank");
-  const errors = validateRecords(records);
-  const hasErrors = errors.length > 0;
-  if (hasErrors !== expectedErrors) {
-    throw new Error(`${name}: expected errors=${expectedErrors}, got ${errors.length}: ${errors.join(" | ")}`);
-  }
+function expect(name, text, shouldFail) {
+  const errors = validate(recordsFromText(text, `${name}.md`, "bank"), false);
+  if ((errors.length > 0) !== shouldFail) throw new Error(`${name}: expected fail=${shouldFail}, got ${errors.length}: ${errors.join(" | ")}`);
 }
 
-function runRegressionFixtures() {
+function fixtures() {
   const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
-  const gapValid = `## Q-7.2-002 — fixture\n\n**FR status:** FR SOURCE GAP CONFIRMED — Tier B/C basis retained — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
-  const draftApproved = valid.replace("FROZEN FR / SOURCE VERIFIED", "DRAFT — Tier A required");
-  const noFrReview = valid.replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", "");
-  const noCredential = valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, 2026-09-06");
-  const enPending = valid.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED");
-  const approvalNoName = valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Reviewer, 2026-09-06");
-  const pending = `## Q-7.2-003 — fixture\n\n**FR status:** DRAFT\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:** PENDING REVIEWER + DATE\n`;
-
-  expectFixture("valid-approved-chain", valid, false);
-  expectFixture("valid-source-gap-chain", gapValid, false);
-  expectFixture("draft-approved", draftApproved, true);
-  expectFixture("missing-fr-review", noFrReview, true);
-  expectFixture("missing-fr-credential", noCredential, true);
-  expectFixture("pending-en-review", enPending, true);
-  expectFixture("generic-final-reviewer", approvalNoName, true);
-  expectFixture("ordinary-pending-item", pending, false);
-
-  const invalidTable = `| ID | FR status | Type | Current source basis | EN status | Approval |\n|---|---|---|---|---|---|\n| Q-7.3-001 | FROZEN FR / SOURCE VERIFIED | MCQ | fixture | BILINGUAL TECHNICAL REVIEW REQUIRED | APPROVED — Jane Doe, 2026-09-06 |\n`;
-  expectFixture("table-approved-before-en-review", invalidTable, true);
-
+  const gap = valid.replace("Q-7.2-001", "Q-7.2-002").replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained");
+  expect("valid-approved-chain", valid, false);
+  expect("valid-source-gap-chain", gap, false);
+  expect("draft-approved", valid.replace("FROZEN FR / SOURCE VERIFIED", "DRAFT — Tier A required"), true);
+  expect("missing-fr-review", valid.replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", ""), true);
+  expect("missing-fr-credential", valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, 2026-09-06"), true);
+  expect("pending-en-review", valid.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
+  expect("generic-final-reviewer", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Reviewer, 2026-09-06"), true);
+  expect("ordinary-pending-item", `## Q-7.2-003\n\n**FR status:** DRAFT\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:** PENDING REVIEWER + DATE\n`, false);
+  expect("table-approved-before-en-review", `| ID | FR status | Type | Current source basis | EN status | Approval |\n|---|---|---|---|---|---|\n| Q-7.3-001 | FROZEN FR / SOURCE VERIFIED | MCQ | fixture | BILINGUAL TECHNICAL REVIEW REQUIRED | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
   console.log("DGR approval-chain regression fixtures: PASS");
 }
 
-if (process.argv.includes("--test")) {
-  runRegressionFixtures();
-} else {
-  runRepositoryCheck();
-}
+if (process.argv.includes("--test")) fixtures();
+else repositoryCheck();
