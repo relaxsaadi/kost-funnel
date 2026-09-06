@@ -43,6 +43,11 @@ function normalizedHeader(value) {
     .toLowerCase();
 }
 
+function isMarkdownSeparatorRow(cells, expectedWidth) {
+  if (cells.length !== expectedWidth) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")));
+}
+
 function duplicates(values) {
   const counts = new Map();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
@@ -163,8 +168,8 @@ function parseTaskTable(text, fn, artifactLabel, requireTaskSource) {
     found = true;
 
     const separator = markdownTableCells(lines[i + 1] ?? "");
-    if (!separator.length) {
-      fail(`${artifactLabel}: canonical task header is not followed by a Markdown separator row`);
+    if (!isMarkdownSeparatorRow(separator, headers.length)) {
+      fail(`${artifactLabel}: canonical task header is not followed by a valid Markdown separator row`);
       continue;
     }
 
