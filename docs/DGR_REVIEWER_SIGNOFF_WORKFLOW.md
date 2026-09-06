@@ -40,33 +40,31 @@ C), and not this session's own paraphrase of either.
 
 **Who:** Whoever has authenticated access to the IATA Digital Publications
 Bookshelf and reads the actual current text — this can be an AI session
-with a working Bookshelf connection (as Function 7.1's 11 pilot items
-were), a human with Bookshelf access, or both. This is evidence-gathering,
-not a judgment call, so it does not require the same "qualified reviewer"
-credential as Gates 2–3 — but every claim must cite an exact current
-section/table/page reference, per rule 6 (no bulk-copying licensed text;
-concise references and conclusions only).
+with a working Bookshelf connection, a human with Bookshelf access, or
+both. This is evidence-gathering, not a judgment call, so it does not
+require the same "qualified reviewer" credential as Gates 2–3 — but every
+claim must cite an exact current section/table/page reference, per rule 6
+(no bulk-copying licensed text; concise references and conclusions only).
 
 **Resulting FR status** (exactly one, no others):
 - `FROZEN FR / SOURCE VERIFIED` — current text read, confirms the item
-  as drafted (or confirms it with a documented wording correction).
+  as drafted (or confirms it with a documented wording correction). This
+  is the only Gate-1 state that can continue toward production
+  `APPROVED` for a regulatory claim.
 - `FR SOURCE GAP CONFIRMED` — current text was read and does not support
-  the item's premise (e.g. Q-7.1-001: the DGR glossary deliberately
-  excludes the term). This is a terminal, decisive state, not a failure —
-  it means the item's basis must be re-attributed to Tier B/C, not deleted
-  outright, per the precedent set for Q-7.1-001.
+  the item's regulatory premise. This is a decisive diagnostic state,
+  but it is **not** an approval-eligible Gate-1 pass. The item may remain
+  recorded for drafting/history on its Tier B/C basis, but it must be
+  repaired, re-attributed, or rewritten so the production claim itself is
+  supported and then re-verified before it can continue toward
+  `APPROVED`.
 - `FR SOURCE CONFLICT` — current text contradicts a prior source or
   another item's basis; do not resolve by guessing, record the conflict
-  explicitly (see the Function 7.9/7.10 Block-7 star-rating precedent for
-  how a conflict gets logged and later independently resolved).
-- Anything still `DRAFT — Tier B only, SOURCE REQUIRED for Tier A` has not
-  passed this gate yet. **This is the status of 442 of this program's 453
-  items as of 2026-08-25** (all of Functions 7.2–7.10, plus 7 of Function
-  7.1's 19). Gate 1 is currently blocked program-wide by the
-  `chrome-devtools` MCP connection issue documented in
-  `docs/AI_HANDOFF.md`'s "Tier A retry #2" entry — resuming Gate 1 for any
-  item requires that connection to be re-bound to an authenticated
-  Bookshelf tab first.
+  explicitly and keep the item non-approved until the conflict is
+  independently resolved and the resulting production claim is verified.
+- Anything still `DRAFT — Tier B only, SOURCE REQUIRED for Tier A`,
+  `PARTIALLY CONFIRMED`, `STALE CITATION`, `SOURCE REQUIRED`, or another
+  unresolved source state has not passed this gate.
 
 ### Gate 2 — FR qualified technical reviewer sign-off
 
@@ -77,8 +75,7 @@ usage (MCQ/True-False conventions) — a human-judgment layer Gate 1's
 text-matching alone doesn't cover.
 
 **Who:** Must be a real, named, qualified individual — a DGR instructor
-with the standing to certify exam content for KOST's CBTA program. **No
-such person has been identified or engaged in this session.** Do not
+with the standing to certify exam content for KOST's CBTA program. Do not
 infer or assume this is the same person as the Bookshelf-access holder in
 Gate 1, or the EN reviewer in Gate 3 — they may or may not be, but this
 workflow does not presume it either way.
@@ -95,8 +92,7 @@ and distractor plausibility preserved across the FR→EN translation.
 
 **Who:** A named, qualified bilingual DGR reviewer. May be the same person
 as Gate 2 if they are bilingual, or a different person — not presumed
-either way. **No such person has been identified or engaged in this
-session.**
+either way.
 
 **Recording the sign-off:** change the item's EN status field from
 `BILINGUAL TECHNICAL REVIEW REQUIRED` to `BILINGUAL TECHNICAL REVIEW
@@ -116,28 +112,30 @@ be the real sign-off date: a valid calendar date that is not in the
 future.
 
 **Hard rule, no exceptions:** an item may not be marked `APPROVED` if any
-of Gates 1–3 shows a pending, incomplete, `DRAFT`, `SOURCE GAP`, or
-`SOURCE CONFLICT` state. A `FR SOURCE GAP CONFIRMED` item (like the
-precedent for Q-7.1-001) can still reach Gates 2–4 on its Tier B/C basis —
-"gap confirmed" is a valid terminal Gate-1 outcome, not a block — but it
-must be labeled as such throughout, never silently upgraded to imply Tier
-A support it doesn't have.
+of Gates 1–3 shows a pending, incomplete, `DRAFT`, `SOURCE GAP`,
+`SOURCE CONFLICT`, `STALE CITATION`, `PARTIALLY CONFIRMED`, or equivalent
+unresolved state. `FR SOURCE GAP CONFIRMED` is useful evidence that the
+current Tier-A text was actually checked and did not support the premise;
+it must remain visibly non-approved until the production claim is repaired
+or re-attributed and then receives direct current Tier-A verification.
 
-## Current program-wide status against this workflow (2026-08-25)
+## Historical status note
 
-| Gate | Items that have passed it | Items that have not |
-|---|---|---|
-| Gate 1 (Tier A) | 11 of Function 7.1's 12 pilot items (`FROZEN FR / SOURCE VERIFIED`) + 1 (`FR SOURCE GAP CONFIRMED`, itself a terminal pass) = **12/453** | 441/453 — blocked on the chrome-devtools reconnection |
-| Gate 2 (FR reviewer) | **0/453** | 453/453 — no FR reviewer has been named/engaged |
-| Gate 3 (EN reviewer) | **0/453** | 453/453 — all 453 items have a translation *draft*, none has been *reviewed* |
-| Gate 4 (`APPROVED`) | **0/453** | 453/453 |
+Older snapshots in this repository recorded early pilot counts while Gate
+1 work was still being established. Those dated counts are historical
+only and must not be used as current readiness evidence. Current program
+status is determined from the per-function source/competency matrices,
+production-bank artifacts, EN review packages, and the deterministic CI
+gates on the exact branch head.
 
-Nothing in this table is new information invented for this document — it
-restates facts already recorded in `docs/DGR_FUNCTIONS_PROGRAM_STATUS.md`,
-`docs/DGR_STAGE_2B_STATUS.md`, and each function's own production bank and
-EN review package files. This document's only job is to make the
-end-to-end path from `DRAFT` to `APPROVED` explicit and traceable to those
-existing sources, not to advance any item's actual status.
+In particular:
+
+- a `SOURCE GAP` or `SOURCE CONFLICT` is never counted as a production
+  approval pass;
+- representative/sample verification is not item-specific verification;
+- FR source verification does not imply EN bilingual review;
+- no item becomes `APPROVED` unless the durable Gate 1→2→3→4 chain is
+  complete on that item.
 
 ## What this workflow does NOT authorize
 
@@ -148,6 +146,8 @@ existing sources, not to advance any item's actual status.
   fill in a gate.
 - It does not authorize treating Gate 1 (Tier A) as optional or
   skippable — an item cannot reach `APPROVED` on Gates 2–4 alone.
+- It does not authorize promoting an item whose direct current source
+  state is `SOURCE GAP`, `SOURCE CONFLICT`, or otherwise unresolved.
 - It does not claim `PLATFORM READY TO USE` or any other program-level
   readiness label — see `docs/PLATFORM_READINESS_REPORT.md` and
   `docs/FULL_PROGRAM_READINESS_SCOPE.md` for those labels' own criteria,
