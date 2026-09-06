@@ -63,8 +63,8 @@ function isRealNonFutureIsoDate(value = "") {
 function terminalFrSourceState(value = "") {
   const text = normalize(value).toUpperCase();
   if (!text) return false;
-  if (/SOURCE CONFLICT|PARTIALLY CONFIRMED|STALE CITATION|\bDRAFT\b|SOURCE REQUIRED|NOT YET VERIFIED/.test(text)) return false;
-  return /^FROZEN FR\s*\/\s*SOURCE VERIFIED\b/.test(text) || /^FR SOURCE GAP CONFIRMED\b/.test(text);
+  if (/SOURCE GAP|SOURCE CONFLICT|PARTIALLY CONFIRMED|STALE CITATION|\bDRAFT\b|SOURCE REQUIRED|NOT YET VERIFIED/.test(text)) return false;
+  return /^FROZEN FR\s*\/\s*SOURCE VERIFIED\b/.test(text);
 }
 
 function completedReview(value, kind) {
@@ -152,7 +152,7 @@ const recordsFromText = (text, artifact, kind) => [...itemRecords(text, artifact
 function approvedRecordErrors(record) {
   if (!isApproved(record.approval)) return [];
   const errors = [];
-  if (!terminalFrSourceState(record.fr)) errors.push("Gate 1 terminal FR source state missing");
+  if (!terminalFrSourceState(record.fr)) errors.push("Gate 1 direct current FROZEN FR / SOURCE VERIFIED state missing or unresolved source state present");
   const fr = completedReview(record.fr, "fr");
   if (!fr.ok) errors.push(`Gate 2 incomplete: ${fr.reason}`);
   const en = completedReview(record.en, "en");
@@ -215,7 +215,7 @@ function fixtures() {
   const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
   const gap = valid.replace("Q-7.2-001", "Q-7.2-002").replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained");
   expect("valid-approved-chain", valid, false);
-  expect("valid-source-gap-chain", gap, false);
+  expect("source-gap-approved", gap, true);
   expect("draft-approved", valid.replace("FROZEN FR / SOURCE VERIFIED", "DRAFT — Tier A required"), true);
   expect("missing-fr-review", valid.replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", ""), true);
   expect("missing-fr-credential", valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, Trainer, 2026-09-06"), true);
