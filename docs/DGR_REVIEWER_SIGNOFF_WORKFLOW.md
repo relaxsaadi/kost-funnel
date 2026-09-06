@@ -21,10 +21,11 @@ program are `APPROVED`.
 ## The four gates, in required order
 
 An item reaches `APPROVED` only after all four gates below are complete,
-each with its own named person and date recorded — not a single
-"reviewed" checkbox. This mirrors the FR-status / EN-status / Approval
-three-column structure already used in `docs/DGR_STAGE_2B_STATUS.md` and
-every `docs/DGR_PRODUCTION_BANK_7.X.md` file; `APPROVED` requires all three
+each with its own named person and real review date recorded — not a single
+"reviewed" checkbox. Review dates must be valid calendar dates and may not
+be postdated. This mirrors the FR-status / EN-status / Approval three-column
+structure already used in `docs/DGR_STAGE_2B_STATUS.md` and every
+`docs/DGR_PRODUCTION_BANK_7.X.md` file; `APPROVED` requires all three
 columns to show a completed, dated, named state simultaneously — not just
 the Approval column.
 
@@ -84,7 +85,7 @@ workflow does not presume it either way.
 
 **Recording the sign-off:** append to the item's FR status field, e.g.
 `FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by
-<full name>, <role/credential>, <YYYY-MM-DD>)`.
+<full name>, <DGR/CBTA role or credential>, <YYYY-MM-DD>)`.
 
 ### Gate 3 — EN bilingual reviewer sign-off
 
@@ -99,8 +100,10 @@ session.**
 
 **Recording the sign-off:** change the item's EN status field from
 `BILINGUAL TECHNICAL REVIEW REQUIRED` to `BILINGUAL TECHNICAL REVIEW
-COMPLETE (reviewed by <full name>, <YYYY-MM-DD>)`, per
-`docs/DGR_EN_REVIEWER_GUIDE.md`'s own format.
+COMPLETE (reviewed by <full name>, <bilingual DGR/CBTA role or credential>,
+<YYYY-MM-DD>)`. The qualification is recorded explicitly so the durable
+artifact proves that the reviewer was not merely named, but identified in
+the qualified DGR/bilingual role required by this gate.
 
 ### Gate 4 — `APPROVED`
 
@@ -108,7 +111,9 @@ COMPLETE (reviewed by <full name>, <YYYY-MM-DD>)`, per
 one item, the item's Approval field changes from `PENDING REVIEWER +
 DATE` to `APPROVED — <reviewer name>, <YYYY-MM-DD>` (the reviewer name
 here should be whoever takes final accountability for the item as a
-whole — often, but not necessarily, the Gate 2 FR reviewer).
+whole — often, but not necessarily, the Gate 2 FR reviewer). The date must
+be the real sign-off date: a valid calendar date that is not in the
+future.
 
 **Hard rule, no exceptions:** an item may not be marked `APPROVED` if any
 of Gates 1–3 shows a pending, incomplete, `DRAFT`, `SOURCE GAP`, or
@@ -137,7 +142,8 @@ existing sources, not to advance any item's actual status.
 ## What this workflow does NOT authorize
 
 - It does not authorize marking any item `APPROVED` — that requires all
-  four gates genuinely complete, with real names and dates.
+  four gates genuinely complete, with real names, DGR/bilingual
+  qualifications where required, and real dates.
 - It does not authorize inventing a reviewer name, credential, or date to
   fill in a gate.
 - It does not authorize treating Gate 1 (Tier A) as optional or
