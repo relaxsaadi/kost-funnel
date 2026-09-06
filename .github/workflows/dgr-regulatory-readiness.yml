@@ -45,6 +45,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs --test-review-state-policy
 
+      - name: Review-evidence semantics regression fixtures
+        if: always()
+        run: node scripts/check-dgr-review-evidence-semantics.mjs --test
+
+      - name: Review-evidence semantics consistency gate
+        if: always()
+        run: node scripts/check-dgr-review-evidence-semantics.mjs
+
       - name: Approval-chain regression fixtures
         if: always()
         run: node scripts/check-dgr-approval-chain.mjs --test
