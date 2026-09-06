@@ -37,6 +37,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { validateTierAEvidenceForFrState } from "./lib/dgr-matrix-tier-a-policy.mjs";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
@@ -420,6 +421,10 @@ function parseSourceCompetencyMatrix(text, fn, artifactLabel) {
       if (!frState) fail(`${artifactLabel}: task ${taskId} is missing FR source-verification state`);
       if (!enState) fail(`${artifactLabel}: task ${taskId} is missing EN bilingual-review state`);
       if (!notes) warn(`${artifactLabel}: task ${taskId} has an empty Notes / limitations cell`);
+
+      for (const error of validateTierAEvidenceForFrState({ tierAEvidence, frState, frVerifier })) {
+        fail(`${artifactLabel}: task ${taskId}: ${error}`);
+      }
 
       if (/FROZEN|SOURCE VERIFIED|\bVERIFIED\b/i.test(frState) && !reviewerAndDateLooksComplete(frVerifier)) {
         fail(`${artifactLabel}: task ${taskId} claims FR verification without a named verifier + ISO date`);
