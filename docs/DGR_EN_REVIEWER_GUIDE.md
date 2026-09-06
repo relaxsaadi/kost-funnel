@@ -48,12 +48,13 @@ Functions 7.1–7.10). For each item, the review checks:
 - **Completing an EN review does NOT make an item `APPROVED`.** Per
   `.claude/rules/dgr-stage2b.md` rule 4, `APPROVED` requires **all
   three** of the following, each with its own **named reviewer and
-  date**:
+  real review date**:
   1. FR Tier A regulatory verification (against the current official
      67th Edition/Addendum 1 text itself, not a summary or a course
      citation of it),
   2. FR qualified-reviewer technical sign-off,
-  3. EN bilingual technical review sign-off (this review).
+  3. EN bilingual technical review sign-off by a named, qualified
+     bilingual DGR reviewer.
 
   If you complete every EN review in every package, the honest resulting
   status for those items is **"EN bilingual review complete; FR Tier A
@@ -124,6 +125,7 @@ same sign-off format. Do not invent a different one. Per item:
 ```
 Item: Q-7.X-0YY
 Reviewer name (qualified bilingual DGR instructor): ____________________
+Reviewer DGR/CBTA role or credential: ____________________
 Review date (YYYY-MM-DD): ____________________
 Verified against live-administered FR item text (not just this draft): YES / NO
 Regulatory accuracy — FR: PASS / FAIL / CONDITIONAL — notes: ____________
@@ -140,21 +142,25 @@ Approval: [Named reviewer] + [Date]
 - In the relevant `docs/DGR_EN_REVIEW_PACKAGE_7.X.md` file, find the
   item's `- **EN status:**` line (currently `BILINGUAL TECHNICAL REVIEW
   REQUIRED` for every item in every package) and change it to
-  `BILINGUAL TECHNICAL REVIEW COMPLETE` **only if every one of the five
+  `BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by <full name>, <DGR/CBTA
+  role or credential>, <YYYY-MM-DD>)` **only if every one of the five
   PASS/FAIL/CONDITIONAL checks above is PASS**. If any check is FAIL or
   CONDITIONAL, the status becomes `REVISION REQUIRED` with your notes on
   what needs to change, and the item goes back to drafting — it does not
   become "complete with caveats."
 - Find the item's `- **Approval:**` line (currently `PENDING REVIEWER +
-  DATE`) and replace it with **your real name and the real date** you
-  completed the review — e.g. `Approval: Jane Doe, DGR/CBTA Instructor
-  (IATA cert. #XXXXX) — 2026-09-03`. This field must always contain a
-  named individual and a real calendar date.
-- **Never fabricate a reviewer name or a date, and never backdate or
-  postdate.** If you are reviewing on behalf of someone else, or a review
-  was verbally agreed but not yet formally signed, leave the field as
-  `PENDING REVIEWER + DATE` until the actual sign-off happens. An
-  anonymous or undated sign-off is not accepted anywhere in this program
+  DATE`) and replace it with **your real name, qualification and the real
+  date** you completed the EN review — e.g. `Approval: Jane Doe,
+  DGR/CBTA Instructor (IATA cert. #XXXXX) — 2026-09-03`. This package
+  field records the EN reviewer event; it does not by itself change the
+  item's program-level Approval state to `APPROVED`.
+- **Never fabricate a reviewer name, qualification or date, and never
+  backdate or postdate.** The date must be a real calendar date on which
+  the review actually occurred. If you are reviewing on behalf of someone
+  else, or a review was verbally agreed but not yet formally signed,
+  leave the field as `PENDING REVIEWER + DATE` until the actual sign-off
+  happens. An anonymous, unqualified, impossible-dated, future-dated or
+  undated sign-off is not accepted anywhere in this program
   (`.claude/rules/dgr-stage2b.md` rule 4).
 - If your review changes the terminology decision for a term already
   covered by `docs/DGR_EN_TERMINOLOGY_MASTER.md` Part A or B, **also**
@@ -164,9 +170,9 @@ Approval: [Named reviewer] + [Date]
   propagation is the entire point of resolving it once in the master
   file rather than n times.
 - **This guide does not itself change any item's status.** Only an actual
-  named, dated sign-off recorded in the package file (as above) changes
-  an item's status. Reading this guide, or reading the master
-  terminology file, closes nothing by itself.
+  named, qualified, dated sign-off recorded in the package file (as above)
+  changes an item's EN review status. Reading this guide, or reading the
+  master terminology file, closes nothing by itself.
 
 ---
 
@@ -204,14 +210,14 @@ One reasonable sequence, if you have no other preference:
 **No item in this entire program may be marked `APPROVED` by this guide,
 by `docs/DGR_EN_TERMINOLOGY_MASTER.md`, or by completing EN bilingual
 review alone — no matter how many items are reviewed or how thoroughly.**
-`APPROVED` requires named, dated sign-off on all three separate gates
-(FR Tier A verification, FR technical reviewer sign-off, EN bilingual
-review sign-off) as described in section 1 above. If you are unsure
-whether an item's FR Tier A verification is already complete, check
-`docs/DGR_SOURCE_REGISTER.md` and `docs/DGR_STAGE_2B_STATUS.md` (Function
-7.1) or the relevant function's row in
-`docs/DGR_FUNCTIONS_PROGRAM_STATUS.md` (Functions 7.2–7.10) — as of this
-guide's preparation, Tier A verification is either not started or only
-partially complete for every function, so assume it is still required
-unless one of those files explicitly says otherwise for the specific item
-in front of you.
+`APPROVED` requires named, qualified where applicable, dated sign-off on
+all three separate gates (FR Tier A verification, FR technical reviewer
+sign-off, EN bilingual review sign-off) as described in section 1 above.
+If you are unsure whether an item's FR Tier A verification is already
+complete, check `docs/DGR_SOURCE_REGISTER.md` and
+`docs/DGR_STAGE_2B_STATUS.md` (Function 7.1) or the relevant function's
+row in `docs/DGR_FUNCTIONS_PROGRAM_STATUS.md` (Functions 7.2–7.10) — as
+of this guide's preparation, Tier A verification is either not started or
+only partially complete for every function, so assume it is still
+required unless one of those files explicitly says otherwise for the
+specific item in front of you.
