@@ -21,7 +21,9 @@ const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9"
 const normalize = (value = "") => value.replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
 
 function isPlaceholder(value = "") {
-  return /(?:^|\b)(?:pending|tbd|todo|unknown|unnamed|reviewer|name|credential|qualification|not yet|à renseigner|a renseigner|non renseigné|non renseigne)(?:\b|$)|[<>]/i.test(normalize(value));
+  const text = normalize(value);
+  if (!text || /[<>]/.test(text)) return true;
+  return /^(?:pending(?:\s+reviewer(?:\s*\+\s*date)?)?|tbd|todo|unknown|unnamed|reviewer(?:\s*\+\s*date)?|name|credential|qualification|not yet(?:\s+(?:reviewed|verified))?|à renseigner|a renseigner|non renseigné|non renseigne)$/i.test(text);
 }
 
 function isRealNonFutureIsoDate(value = "") {
