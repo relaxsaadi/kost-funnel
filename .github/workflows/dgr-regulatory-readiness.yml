@@ -41,6 +41,10 @@ jobs:
         if: always()
         run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
 
+      - name: Independent official-task coverage gate
+        if: always()
+        run: node scripts/check-dgr-official-task-coverage.mjs
+
       - name: Full DGR readiness artifact gate
         if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs
