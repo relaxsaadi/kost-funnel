@@ -45,6 +45,14 @@ jobs:
         if: always()
         run: node scripts/test-dgr-official-task-coverage.mjs
 
+      - name: Official-task table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-official-task-table-structure.mjs --test
+
+      - name: Official-task table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-official-task-table-structure.mjs
+
       - name: Official-task source-locator regression fixtures
         if: always()
         run: node scripts/check-dgr-task-source-locators.mjs --test
