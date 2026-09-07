@@ -105,6 +105,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-terminal-review-evidence.mjs
 
+      - name: Approval-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-approval-table-structure.mjs --test
+
+      - name: Approval-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-approval-table-structure.mjs
+
       - name: Approval-chain regression fixtures
         if: always()
         run: node scripts/check-dgr-approval-chain.mjs --test
