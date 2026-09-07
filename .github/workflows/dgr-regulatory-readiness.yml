@@ -53,6 +53,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-task-source-locators.mjs
 
+      - name: Function 7.1 bank-ID structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-stage71-question-id-structure.mjs --test
+
+      - name: Function 7.1 bank-ID structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-stage71-question-id-structure.mjs
+
       - name: Stage 2A blueprint coverage regression fixtures
         if: always()
         run: node scripts/check-dgr-blueprint-coverage.mjs --test
