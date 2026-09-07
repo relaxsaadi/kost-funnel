@@ -81,6 +81,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-matrix-review-evidence.mjs
 
+      - name: Reviewer identity-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-identity-evidence.mjs --test
+
+      - name: Reviewer identity-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-identity-evidence.mjs
+
       - name: Review-evidence semantics regression fixtures
         if: always()
         run: node scripts/check-dgr-review-evidence-semantics.mjs --test
