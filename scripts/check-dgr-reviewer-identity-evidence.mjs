@@ -84,7 +84,8 @@ function nameSegmentFromEvidence(value, { approval = false } = {}) {
 
 function looksLikeNamedPerson(segment) {
   const tokens = segment.match(/[\p{L}][\p{L}'’.-]*/gu) ?? [];
-  const nameTokens = tokens.filter((token) => !roleTokenRe.test(token) && !nameParticleRe.test(token));
+  if (tokens.some((token) => roleTokenRe.test(token))) return false;
+  const nameTokens = tokens.filter((token) => !nameParticleRe.test(token));
   return nameTokens.length >= 2;
 }
 
@@ -98,7 +99,7 @@ function identityEvidenceErrors(value, label, options = {}) {
 
   const segment = nameSegmentFromEvidence(text, options);
   if (!looksLikeNamedPerson(segment)) {
-    errors.push(`${label}: reviewer identity is missing or role-only ("${segment || "empty"}")`);
+    errors.push(`${label}: reviewer identity is missing, role-only, or contains a role/title token ("${segment || "empty"}")`);
   }
   return errors;
 }
@@ -300,6 +301,8 @@ function fixtures() {
   expectMatrix("valid-named-reviewers", validMatrix, false);
   expectMatrix("role-only-fr-reviewer", { ...validMatrix, frReviewer: "Regulatory Specialist — 2026-09-06" }, true);
   expectMatrix("role-only-en-reviewer", { ...validMatrix, enReviewer: "Regulatory Specialist — Bilingual DGR/CBTA Reviewer FR/EN — 2026-09-06" }, true);
+  expectMatrix("role-token-inside-fr-identity", { ...validMatrix, frReviewer: "Aviation Safety Officer — 2026-09-06" }, true);
+  expectMatrix("role-token-inside-en-identity", { ...validMatrix, enReviewer: "Aviation Safety Officer — Bilingual DGR/CBTA Reviewer FR/EN — 2026-09-06" }, true);
   expectMatrix("hyphenated-real-name", { ...validMatrix, frReviewer: "Jean-Pierre Dupont — 2026-09-06" }, false);
   expectMatrix("pending-states-remain-representable", {
     frState: "DRAFT / NOT YET VERIFIED",
@@ -313,6 +316,9 @@ function fixtures() {
   expectArtifact("role-only-fr-completion", validItem.replace("Jane Doe, DGR/CBTA Instructor", "Regulatory Specialist, DGR/CBTA Instructor"), true);
   expectArtifact("role-only-en-completion", validItem.replace("John Smith, Bilingual DGR/CBTA Reviewer FR/EN", "Regulatory Specialist, Bilingual DGR/CBTA Reviewer FR/EN"), true);
   expectArtifact("role-only-final-approval", validItem.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Regulatory Specialist, 2026-09-06"), true);
+  expectArtifact("aviation-safety-officer-fr-completion", validItem.replace("Jane Doe, DGR/CBTA Instructor", "Aviation Safety Officer, DGR/CBTA Instructor"), true);
+  expectArtifact("aviation-safety-officer-en-completion", validItem.replace("John Smith, Bilingual DGR/CBTA Reviewer FR/EN", "Aviation Safety Officer, Bilingual DGR/CBTA Reviewer FR/EN"), true);
+  expectArtifact("aviation-safety-officer-final-approval", validItem.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Aviation Safety Officer, 2026-09-06"), true);
 
   console.log("DGR reviewer identity-evidence regression fixtures: PASS");
 }
