@@ -61,6 +61,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-stage71-question-id-structure.mjs
 
+      - name: All-function question-heading binding regression fixtures
+        if: always()
+        run: node scripts/check-dgr-question-heading-function-binding.mjs --test
+
+      - name: All-function question-heading binding consistency gate
+        if: always()
+        run: node scripts/check-dgr-question-heading-function-binding.mjs
+
       - name: Stage 2A blueprint coverage regression fixtures
         if: always()
         run: node scripts/check-dgr-blueprint-coverage.mjs --test
