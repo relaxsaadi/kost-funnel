@@ -69,6 +69,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-blueprint-coverage.mjs
 
+      - name: Stage 2A blueprint-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-blueprint-table-structure.mjs --test
+
+      - name: Stage 2A blueprint-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-blueprint-table-structure.mjs
+
       - name: Review-state semantic regression fixtures
         if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs --test-review-state-policy
