@@ -1,8 +1,8 @@
-# DGR EN Review Package — Function 7.1 Pilot (Q-7.1-001 – Q-7.1-012)
+# DGR EN Review Package — Function 7.1 (Q-7.1-001 – Q-7.1-019)
 
-Prepared as bilingual (FR→EN) draft translation material for the 12 frozen,
-FR-terminal Function 7.1 pilot items. This is **preparatory drafting work
-for a human reviewer to check — it is not a substitute for that review.**
+Prepared as bilingual (FR→EN) draft translation material for all 19 currently
+drafted Function 7.1 items. This is **preparatory drafting work for a human
+reviewer to check — it is not a substitute for that review.**
 
 ## Status discipline — read before using anything below
 
@@ -12,65 +12,41 @@ for a human reviewer to check — it is not a substitute for that review.**
 - Every item below carries the status **`BILINGUAL TECHNICAL REVIEW
   REQUIRED`** (translation drafted, not yet reviewed).
 - Every approval field reads **`PENDING REVIEWER + DATE`**.
-- This closes no gate in `docs/DGR_STAGE_2B_STATUS.md`; it only prepares
-  material for the separate EN/human-reviewer gate defined by
-  `.claude/rules/dgr-stage2b.md` rules 4–5 and
-  `docs/RECOVERED_STAGE2A_CONTEXT.md`'s binding restriction #8/#9 ("Every
-  FR/EN pair must be meaning-equivalent before approval"; "No question
-  reaches `APPROVED` without a named qualified human reviewer and review
-  date").
+- This closes no human-review gate in `docs/DGR_STAGE_2B_STATUS.md`; it only
+  prepares material for the separate EN/human-reviewer gate defined by
+  `.claude/rules/dgr-stage2b.md` rules 4–5 and the repository's reviewer
+  sign-off workflow.
+- Q-7.1-013 through Q-7.1-019 are included here only because their
+  authoritative production-bank records now carry current FR
+  `FROZEN FR / SOURCE VERIFIED` status. Their EN wording remains unreviewed.
 
-## Out of scope — explicit exclusion
+## Provenance split — pilot versus Batch 1
 
-**Q-7.1-013 through Q-7.1-019 (Production Bank Batch 1,
-`docs/DGR_PRODUCTION_BANK_7.1.md`) are NOT part of this package.** Those 7
-items are still `DRAFT — Tier B only`, not FR-terminal (not FROZEN, not
-SOURCE VERIFIED), so an EN review package for them is premature per the
-task scope. This exclusion is deliberate, not an oversight — do not infer
-that these items were forgotten.
+For **Q-7.1-001 through Q-7.1-012**, the repository stores regulatory source
+basis and validation conclusions but not a verbatim authoritative copy of
+the live-administered French pilot questions. The FR text shown for those
+12 items is therefore a **working gloss reconstructed from the documented
+source basis and frozen-wording notes** in `docs/DGR_STAGE_2B_STATUS.md` and
+`docs/DGR_SOURCE_REGISTER.md`; it does not override the live-administered
+copy. A qualified reviewer must cross-check the pilot gloss and EN draft
+against the actual live FR item before sign-off.
 
-## CRITICAL PROVENANCE NOTE — read this before reviewing any item
+For **Q-7.1-013 through Q-7.1-019**, the authoritative current FR stem,
+options, correct answer and status are durably recorded in
+`docs/DGR_PRODUCTION_BANK_7.1.md`. The EN drafts below are translated from
+that current bank wording, including the recorded Tier-A citation correction
+for Q-7.1-018 and content correction for Q-7.1-019. The reviewer must compare
+these EN drafts against that exact FR source-of-record and the authorized
+current English DGR terminology before completing bilingual review.
 
-This repository, by design (`.claude/rules/dgr-stage2b.md` rule 6: no
-large licensed IATA extracts committed), stores for the 12 frozen pilot
-items only their **regulatory source basis and validation conclusions**
-(`docs/DGR_SOURCE_REGISTER.md`, `docs/DGR_STAGE_2B_STATUS.md`) — not the
-verbatim final French item text. Prior sessions repeatedly documented that
-**the live, administered copy of the pilot question text lives outside
-this environment** (see `docs/AI_HANDOFF.md` line 63, `docs/DGR_STAGE_2B_
-STATUS.md`'s Q-7.1-008 note, `docs/PLATFORM_READINESS_REPORT.md` line 55 —
-all describe corrections as "documentation-stage only... not applied to
-whatever system actually administers the live pilot copy"). This session
-searched the repo, `platform-ops/kost-eexam-console` (a Playwright test
-harness only, not question-bank source), and the referenced local KOST
-course-material folder, and confirms this is a real, already-known gap —
-not a search failure this pass.
-
-**Consequence for this package:** the "FR" text shown for each item below
-is a **working gloss reconstructed from the documented source basis and
-frozen-wording notes** in `docs/DGR_STAGE_2B_STATUS.md` /
-`docs/DGR_SOURCE_REGISTER.md` — composed to be regulatorily accurate to
-those documented conclusions, but it is **not a verbatim transcription of
-the live-administered item**. The EN column is a translation of that
-working gloss.
-
-**The human reviewer must therefore do two things, not one:** (1) the
-normal bilingual technical review of meaning-equivalence and terminology
-described in the checklist below, **and** (2) cross-check both the FR
-gloss and the EN draft against the actual live-administered FR item text
-(wherever that system is) before treating either as final. Where this
-package's FR gloss diverges from the live item's exact wording, the EN
-draft must be re-derived from the live wording, not patched from this
-gloss.
+No official English 67th Edition wording is asserted merely from these
+translations. Where exact English regulatory terminology was not directly
+verified from an authorized current English source, it is explicitly left
+as a reviewer decision.
 
 ---
 
-## The 12 items
-
-Each item cross-references its authoritative status row in
-`docs/DGR_STAGE_2B_STATUS.md` and source evidence in
-`docs/DGR_SOURCE_REGISTER.md`. Do not treat the FR gloss here as
-overriding either of those files.
+## The 19 items
 
 ### Q-7.1-001 — Danger vs. risque
 
@@ -131,7 +107,7 @@ overriding either of those files.
 - **EN draft translation:**
   - Stem: *"Which hazard label represents a corrosive substance (Class 8), depicted by a liquid attacking a hand and a metal bar?"*
   - Options: Class 3 (Flammable Liquid) / Division 6.1 (Toxic Substance) / **Class 8 (Corrosive) — correct** / Class 9 (Miscellaneous Dangerous Goods)
-- **Terminology decision:** class/label names used ("Flammable Liquid," "Toxic," "Corrosive," "Miscellaneous Dangerous Goods") are standard, well-established IATA English nomenclature; not independently re-verified against a supplied English 67th Edition text this session (low risk, but flagged per the no-fabricated-citation rule).
+- **Terminology decision:** class/label names used are standard professional DG terminology but remain subject to the qualified bilingual review gate.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -161,7 +137,7 @@ overriding either of those files.
   - Stem: *"A corrosive substance causes irreversible damage to intact skin tissue after a 3-hour exposure period (effect observed within 14 days of exposure). Per Table 3.8.A, which Packing Group should it be assigned?"*
   - Options: **Packing Group III — correct** / Packing Group I / Packing Group II / No Packing Group is required
   - Correct answer: *"Packing Group III (exposure period >60 min ≤4h, observation period ≤14 days)."*
-- **Note:** the table caption itself, "Tableau 3.8.A Affectation à un groupe d'emballage de la classe d'après la corrosivité (3.8.3)," should translate to "Table 3.8.A Assignment of Packing Group Based on Corrosivity (3.8.3)" — standard construction, not independently EN-source-verified.
+- **Note:** the table-caption English rendering remains a reviewer check; no official English 67th Edition wording is claimed here.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -169,22 +145,22 @@ overriding either of those files.
 
 - **FR status:** `FROZEN FR / SOURCE VERIFIED — final wording locked`
 - **Type:** Pilot item (drafted below as MCQ)
-- **Source basis:** §4.4 Dispositions particulières, A1 + A2 (p.424). Exact confirmed terminology: **"approbation préalable de l'autorité compétente de l'État d'origine et de l'État de l'exploitant"** — the word "dérogation" does not appear in either provision.
+- **Source basis:** §4.4 Dispositions particulières, A1 + A2 (p.424). Exact confirmed FR terminology: **"approbation préalable de l'autorité compétente de l'État d'origine et de l'État de l'exploitant"** — the word "dérogation" does not appear in either provision.
 - **FR working gloss:**
   - Stem: *"Parmi les affirmations suivantes concernant les dispositions particulières A1 et A2 du DGR, laquelle est exacte ?"*
   - Options:
     - **(Correct)** *"A1 exige une approbation préalable de l'autorité compétente de l'État d'origine et de l'État de l'exploitant pour le transport à bord d'un aéronef de passagers ; le même article peut néanmoins être transporté par aéronef cargo selon les colonnes normales du Tableau 4.2 (K/L), sans être soumis au mécanisme d'approbation de A1."*
-    - *"A1 interdit tout transport de l'article par aéronef cargo."* (faux — directement réfuté par le texte même de A1)
-    - *"A2 autorise le transport de l'article par aéronef de passagers."* (faux — A2 est exclusivement cargo)
-    - *"A2 ne requiert aucune approbation pour le transport par aéronef cargo."* (faux — A2 exige la même approbation préalable, même pour le cargo)
+    - *"A1 interdit tout transport de l'article par aéronef cargo."*
+    - *"A2 autorise le transport de l'article par aéronef de passagers."*
+    - *"A2 ne requiert aucune approbation pour le transport par aéronef cargo."*
 - **EN draft translation:**
   - Stem: *"Which of the following statements about IATA DGR Special Provisions A1 and A2 is correct?"*
   - Options:
     - **(Correct)** *"A1 requires prior approval from the competent authority of both the State of Origin and the State of the Operator for carriage on passenger aircraft; the same article may still be carried on cargo aircraft under the normal DGR List columns (K/L, Table 4.2), without being subject to A1's approval mechanism."*
-    - *"A1 forbids the article from being carried on cargo aircraft altogether."* (false — directly refuted by A1's own text)
-    - *"A2 permits the article to be carried on passenger aircraft."* (false — A2 is cargo-aircraft-only)
-    - *"A2 requires no approval for cargo aircraft carriage."* (false — A2 requires the same prior approval, even for cargo)
-- **Terminology decision — locked, high confidence:** "approbation préalable" → **"prior approval"** — must NOT be rendered as "derogation," "exemption," or "waiver" in EN, mirroring the FR-side ban on "dérogation." "État d'origine" → "State of Origin"; "État de l'exploitant" → "State of the Operator" (standard IATA institutional terms).
+    - *"A1 forbids the article from being carried on cargo aircraft altogether."*
+    - *"A2 permits the article to be carried on passenger aircraft."*
+    - *"A2 requires no approval for cargo aircraft carriage."*
+- **Terminology decision — reviewer-controlled:** "approbation préalable" is drafted as **"prior approval"** and must not silently become "derogation," "exemption," or "waiver". The qualified reviewer must confirm the exact official EN term against the current authorized English source.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -192,14 +168,14 @@ overriding either of those files.
 
 - **FR status:** `FROZEN FR / SOURCE VERIFIED — distractor corrected & revalidated`
 - **Type:** Pilot item (drafted below as MCQ)
-- **Source basis:** Tableau 2.6.A "Codes de quantités exceptées pour le tableau 4.2 (2.6.4.1)" (p.12). E0 = "Non permises en quantités exceptées"; E1 = 30g/30mL inner, 1kg/1L outer; E2 = 30g/30mL inner, 500g/500mL outer. Final locked distractor set: "1 kg/1 L" (E1's outer limit, misattributed), "500 g/500 mL" (E2's outer limit, misattributed), "Illimitée" (no code is unlimited).
+- **Source basis:** Tableau 2.6.A. E0 = "Non permises en quantités exceptées"; E1 = 30g/30mL inner, 1kg/1L outer; E2 = 30g/30mL inner, 500g/500mL outer.
 - **FR working gloss:**
   - Stem: *"Selon le Tableau 2.6.A (Codes de quantités exceptées), quelle est la quantité nette maximale autorisée par emballage extérieur pour le code de quantité exceptée E0 ?"*
   - Options: **(Correct)** *"Non permises en quantités exceptées (E0 = aucune quantité exceptée n'est autorisée)."* / *"1 kg / 1 L"* / *"500 g / 500 mL"* / *"Illimitée"*
 - **EN draft translation:**
   - Stem: *"Per Table 2.6.A (Excepted Quantity Codes), what is the maximum net quantity permitted per outer packaging for Excepted Quantity Code E0?"*
-  - Options: **(Correct)** *"Not permitted in excepted quantities (E0 = no excepted quantity is authorized)."* / *"1 kg / 1 L"* (this is E1's actual outer limit, misattributed) / *"500 g / 500 mL"* (this is E2's actual outer limit, misattributed) / *"Unlimited"*
-- **Terminology decision:** "quantité exceptée" → "Excepted Quantity" (standard IATA term, incl. the "E-code" naming convention). "Non permises en quantités exceptées" is rendered as **"Not permitted in excepted quantities"** — a strong working candidate matching typical IATA DGR List E0-row phrasing, but **not independently verified against a supplied English 67th Edition text this session; reviewer should confirm the exact printed EN wording.**
+  - Options: **(Correct)** *"Not permitted in excepted quantities (E0 = no excepted quantity is authorized)."* / *"1 kg / 1 L"* / *"500 g / 500 mL"* / *"Unlimited"*
+- **Terminology decision — FLAGGED:** exact E0-row English wording is not asserted from an official English 67th Edition source here; reviewer must confirm it.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -207,14 +183,13 @@ overriding either of those files.
 
 - **FR status:** `FROZEN FR / SOURCE VERIFIED`
 - **Type:** MCQ
-- **Source basis:** PI 965, Section IA/IB, Tables 965-IA/965-IB. Section IA = 35 kg net quantity per package, cargo aircraft only; Section IB = 10 kg. Frozen wording note: use the exact current table expression "quantité nette par colis."
+- **Source basis:** PI 965, Section IA/IB, Tables 965-IA/965-IB. Section IA = 35 kg net quantity per package, cargo aircraft only; Section IB = 10 kg. Frozen wording note: use the exact current FR table expression "quantité nette par colis."
 - **FR working gloss:**
   - Stem: *"Selon l'Instruction d'emballage 965 (PI 965), quelle est la quantité nette maximale par colis autorisée pour un envoi de piles au lithium ion (UN 3480) expédié en Section IA, par aéronef cargo uniquement ?"*
   - Options: 10 kg (= Section IB) / **35 kg — correct (Section IA)** / 5 kg / Illimitée
 - **EN draft translation:**
   - Stem: *"Per Packing Instruction 965 (PI 965), what is the maximum net quantity per package permitted for a shipment of lithium ion batteries (UN 3480) shipped under Section IA, cargo aircraft only?"*
   - Options: 10 kg (Section IB limit) / **35 kg — correct (Section IA)** / 5 kg / Unlimited
-- **Terminology decision:** "quantité nette par colis" → **"net quantity per package"** (standard IATA table-header term, used exactly per the frozen wording note).
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -229,7 +204,7 @@ overriding either of those files.
 - **EN draft translation:**
   - Stem: *"What information about dry ice (UN 1845) must be marked on the package, per §7.1.4.1(d)?"*
   - Options: The shipment date / **The net quantity of dry ice contained in the package — correct** / The name of the carrier / The recommended storage temperature
-- **Terminology decision — FLAGGED:** "neige carbonique" is rendered as **"dry ice"** (the common IATA/UN usage); the formal UN Proper Shipping Name is "Carbon Dioxide, Solid." Reviewer should confirm which form the exam item should use in EN (common name vs. PSN) for consistency with the rest of the bank.
+- **Terminology decision — FLAGGED:** "neige carbonique" is drafted as **"dry ice"**; reviewer must confirm common-name versus Proper Shipping Name usage for the final EN item.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -244,8 +219,7 @@ overriding either of those files.
 - **EN draft translation:**
   - Statement: *"True or False: When the hazard labels applied to the packages inside an overpack are not visible from the outside, the same hazard labels must be reproduced/applied on the overpack itself."*
   - Correct answer: **TRUE**
-- **Precision note carried into EN:** scope is hazard-label visibility/reproduction only. Proper Shipping Name, UN number, and handling marks are governed by separate provisions and are explicitly outside this item's tested scope — the EN item must not be broadened to imply those marks are also covered.
-- **Terminology decision:** "suremballage" → "overpack" (standard IATA term).
+- **Precision note carried into EN:** scope is hazard-label visibility/reproduction only. Proper Shipping Name, UN number, and handling marks are governed separately and are outside this item's tested scope.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -260,7 +234,120 @@ overriding either of those files.
 - **EN draft translation:**
   - Statement: *"True or False: The shipper must retain at least one copy of the dangerous goods shipment documentation for a minimum period of three months."*
   - Correct answer: **TRUE**
-- **Terminology decision:** "expéditeur" → "shipper"; "documents d'expédition" → "shipment documentation" (standard IATA terms).
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+---
+
+### Q-7.1-013 — Regulatory definition of dangerous goods
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED`
+- **Type:** MCQ, single-answer
+- **Source basis:** DGR 67th Ed. 2026, §1.0 (authoritative FR bank locator; Tier A verified 2026-08-25)
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-013.
+- **EN draft translation:**
+  - Stem: *"Beyond the criterion that a product, article or substance may present a danger to health, safety, property or the environment, what second criterion makes it 'dangerous goods' under the DGR?"*
+  - Options:
+    - **(Correct)** *"It appears in the Dangerous Goods List in the Regulations, or it is classified in accordance with the Regulations."*
+    - *"It is transported by commercial air transport."*
+    - *"It requires UN specification packaging."*
+    - *"It is accompanied by a Safety Data Sheet (SDS)."*
+- **EN terminology note:** this is a semantic draft from the authoritative FR item, not a quotation of official English §1.0. The reviewer must confirm the current official English definitional terminology.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-014 — Legal framework: organization behind Annex 18 / Technical Instructions
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED`
+- **Type:** MCQ, single-answer
+- **Source basis:** DGR 67th Ed. 2026, §1.1.1–1.1.4 (authoritative FR bank locator; Tier A verified 2026-08-25)
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-014.
+- **EN draft translation:**
+  - Stem: *"According to the regulatory hierarchy presented in the course, which organization develops the rules for the safe air transport of dangerous goods that are codified in Annex 18 and the ICAO Technical Instructions?"*
+  - Options:
+    - **(Correct)** *"ICAO — International Civil Aviation Organization"*
+    - *"IATA — International Air Transport Association"*
+    - *"UNSCETDG — United Nations Sub-Committee of Experts on the Transport of Dangerous Goods"*
+    - *"IAEA — International Atomic Energy Agency"*
+- **EN terminology note:** the draft deliberately uses the current-source acronym `UNSCETDG` rather than the older course acronym. Institutional wording remains subject to bilingual reviewer confirmation.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-015 — DGR application and scope
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED`
+- **Type:** True/False
+- **Source basis:** DGR 67th Ed. 2026, §1.2.1 (authoritative FR bank locator; Tier A verified 2026-08-25)
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-015.
+- **EN draft translation:**
+  - Statement: *"True or False: the scope of the IATA DGR includes shippers and agents that offer dangerous-goods consignments to an aircraft operator, in addition to IATA member or associate-member operators and operators participating in the applicable IATA cargo interline agreement."*
+  - Correct answer: **TRUE**
+- **EN terminology note — FLAGGED:** the exact official English title of the interline-agreement category must be checked against the authorized current English DGR before finalization; this draft preserves the FR item's regulatory meaning without asserting a fixed official English phrase.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-016 — Example of potentially hidden dangerous goods
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED`
+- **Type:** MCQ, single-answer
+- **Source basis:** DGR 67th Ed. 2026, §2.2.4 (authoritative FR bank locator; Tier A verified 2026-08-25)
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-016.
+- **EN draft translation:**
+  - Stem: *"Which of the following is explicitly included in the course's list of examples of potentially hidden dangerous goods (DGR 2.2.4)?"*
+  - Options:
+    - **(Correct)** *"Diagnostic specimens"*
+    - *"New clothing in plastic packaging"*
+    - *"Books and printed documents"*
+    - *"Unrefrigerated food"*
+- **EN terminology note — FLAGGED:** `Diagnostic specimens` is a working professional-English rendering of the current FR item term; the reviewer must verify the exact current English list wording before sign-off.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-017 — Dangerous goods carried by passengers or crew
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED`
+- **Type:** True/False
+- **Source basis:** DGR 67th Ed. 2026, §2.3.0.1 (authoritative FR bank locator; Tier A verified 2026-08-25)
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-017.
+- **EN draft translation:**
+  - Statement: *"True or False: dangerous goods, including excepted packages of radioactive material, are prohibited for carriage by passengers or crew as or in checked baggage, in cabin baggage, or on the person, except in the cases expressly permitted by the Regulations for personal use."*
+  - Correct answer: **TRUE**
+- **Precision note:** the item tests only the general prohibition-plus-exception framework; it does not test the detailed content of the individual permitted cases.
+- **EN terminology note:** exact current English phrasing for baggage categories and the radioactive-material qualifier must be checked by the qualified bilingual reviewer; this draft is not an official-text quotation.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-018 — Sulfuric acid classification
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED (citation corrected)`
+- **Type:** MCQ, single-answer
+- **Source basis:** DGR 67th Ed. 2026, Table 4.2 UN1830 + Appendix A (authoritative FR bank locator; Tier A verified 2026-08-25). The former §3.0.2 citation was corrected because it is class taxonomy, not item-specific substance evidence.
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-018.
+- **EN draft translation:**
+  - Stem: *"According to the current source basis for this item, to which dangerous-goods class do sulfuric acid and battery acid belong?"*
+  - Options:
+    - **(Correct)** *"Class 8 — Corrosive substances"*
+    - *"Class 3 — Flammable liquids"*
+    - *"Division 6.1 — Toxic substances"*
+    - *"Class 9 — Miscellaneous dangerous goods"*
+- **Precision note:** the corrected Table 4.2 / Appendix A source basis must remain attached to this item; EN drafting must not restore §3.0.2 as the evidentiary locator for sulfuric acid.
+- **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
+- **Approval:** `PENDING REVIEWER + DATE`
+
+### Q-7.1-019 — Required quality characteristics of package markings
+
+- **FR status:** `FROZEN FR / SOURCE VERIFIED (content corrected)`
+- **Type:** MCQ, single-answer
+- **Source basis:** DGR 67th Ed. 2026, §7.1.3.2 (authoritative FR bank locator; Tier A verified 2026-08-25). The previous Tier-B citation/content was superseded by the current four-criterion FR item.
+- **FR source of record:** `docs/DGR_PRODUCTION_BANK_7.1.md`, Q-7.1-019.
+- **EN draft translation:**
+  - Stem: *"Under the current DGR §7.1.3.2 quality requirement, which four characteristics must markings on a dangerous-goods package meet?"*
+  - Options:
+    - **(Correct)** *"They must be durable, readily visible and legible, able to withstand exposure to weather without significant degradation, and placed on a contrasting-colour background."*
+    - *"They must be coloured, numbered, laminated and removable."*
+    - *"They must be printed only in English, ISO-certified and sealed."*
+    - *"They must be visible and legible, with no requirement for durability or weather resistance."*
+- **EN terminology note — HIGH-PRIORITY REVIEW:** the four properties above are a meaning-preserving draft translated from the current FR source-of-record; they are **not presented as verbatim official English §7.1.3.2 wording**. The qualified reviewer must check the exact current English terminology before completion.
 - **EN status:** `BILINGUAL TECHNICAL REVIEW REQUIRED`
 - **Approval:** `PENDING REVIEWER + DATE`
 
@@ -268,80 +355,99 @@ overriding either of those files.
 
 ## Bilingual terminology table
 
-| FR term | EN term | Verification status | Appears in / source |
+| FR term | EN draft term | Verification status | Appears in / source |
 |---|---|---|---|
-| Marchandise(s) dangereuse(s) | Dangerous Goods (DG) | Standard, well-established | All items; general DGR terminology |
-| Danger | Hazard (also: "danger") | Tier B/C only — **not** DGR-glossary-sourced (confirmed current-edition absence) | Q-7.1-001; Appendice A Généralités p.703, §1.0 Note p.11 |
-| Risque | Risk | Tier B/C only — same caveat as above | Q-7.1-001; same |
-| Classe de danger | Hazard Class | Standard | Q-7.1-003; §3.0.1.1, §3.0.2 |
-| Groupe d'emballage | Packing Group | Standard | Q-7.1-006; Tableau 3.8.A |
-| Étiquette de danger | Hazard Label | Standard | Q-7.1-004, Q-7.1-011; §7.3.17, §7.2.7.1 |
-| Disposition particulière | Special Provision | Standard | Q-7.1-007; §4.4 |
-| Approbation préalable | Prior approval (NOT "derogation"/"exemption") | Locked — exact term confirmed absent from A1/A2's own EN text is unverified, but the FR-side ban on "dérogation" is Tier A confirmed and must carry through to EN | Q-7.1-007; §4.4 A1/A2 |
-| État d'origine | State of Origin | Standard IATA institutional term | Q-7.1-007; §4.4 A1/A2 |
-| État de l'exploitant | State of the Operator | Standard IATA institutional term | Q-7.1-007; §4.4 A1/A2 |
-| Quantité exceptée / code E0 | Excepted Quantity / Code E0 | Standard term; exact E0-row EN phrasing unverified | Q-7.1-008; Tableau 2.6.A |
-| Non permises en quantités exceptées | Not permitted in excepted quantities | Working candidate — **unverified against supplied EN 67th Ed. text** | Q-7.1-008; Tableau 2.6.A, row E0 |
-| Interdit / rigoureusement interdit | Forbidden / Absolutely (Rigorously) Forbidden | Standard | Q-7.1-002; §2.1.1 |
-| Interdit, sauf dérogation | Forbidden, except by exemption (candidate — **unverified**) | **Flagged — reviewer must confirm exact EN term** (exemption / State variation / other) | Q-7.1-002; §2.1.2 |
-| Instruction d'emballage (PI) | Packing Instruction (PI) | Standard | Q-7.1-009; PI 965 |
-| Quantité nette par colis | Net quantity per package | Standard, locked per frozen wording note | Q-7.1-009; PI 965, Tables 965-IA/IB |
-| Suremballage | Overpack | Standard | Q-7.1-011; §7.2.7.1 |
-| Neige carbonique / glace sèche | Dry ice (formal PSN: Carbon Dioxide, Solid) | Standard common usage; PSN-vs-common-name choice flagged for reviewer | Q-7.1-010; §7.1.4.1(d), UN 1845 |
-| Expéditeur | Shipper | Standard | Q-7.1-012; §1.3.4.1 |
-| Document(s) d'expédition | Shipment documentation | Standard | Q-7.1-012; §1.3.4.1 |
-| Colis | Package | Standard | Multiple items |
-| Aéronef de passagers / aéronef cargo | Passenger aircraft / Cargo aircraft | Standard | Q-7.1-002, Q-7.1-005, Q-7.1-007, Q-7.1-009 |
+| Marchandise(s) dangereuse(s) | Dangerous Goods (DG) | Standard professional term; reviewer still controls final EN | All items |
+| Danger | Hazard (also: "danger") | Tier B/C only — **not** DGR-glossary-sourced | Q-7.1-001 |
+| Risque | Risk | Tier B/C only — same caveat | Q-7.1-001 |
+| Classe de danger | Hazard Class | Standard working term | Q-7.1-003, Q-7.1-018 |
+| Groupe d'emballage | Packing Group | Standard working term | Q-7.1-006 |
+| Étiquette de danger | Hazard Label | Standard working term | Q-7.1-004, Q-7.1-005, Q-7.1-011 |
+| Disposition particulière | Special Provision | Standard working term | Q-7.1-007 |
+| Approbation préalable | Prior approval | Reviewer must confirm exact current EN regulatory phrase; never silently change legal meaning | Q-7.1-007 |
+| Quantité exceptée | Excepted Quantity | Standard working term; exact E0 wording unverified | Q-7.1-008 |
+| Instruction d'emballage | Packing Instruction | Standard working term | Q-7.1-009 |
+| Suremballage | Overpack | Standard working term | Q-7.1-011 |
+| Neige carbonique / glace sèche | Dry ice | PSN/common-name choice flagged | Q-7.1-010 |
+| Expéditeur | Shipper | Standard working term | Q-7.1-012, Q-7.1-015 |
+| Échantillons diagnostiques | Diagnostic specimens | **Reviewer confirmation required against current authorized EN source** | Q-7.1-016 |
+| Bagages enregistrés / bagages de cabine / sur la personne | Checked baggage / cabin baggage / on the person | **Reviewer confirmation required for exact current EN wording** | Q-7.1-017 |
+| Matières corrosives | Corrosive substances | Standard working term; item locator is Table 4.2 UN1830 + Appendix A | Q-7.1-018 |
+| Marques durables / visibles / lisibles / intempéries / fond contrastant | Durable / visible / legible / weather exposure / contrasting background | **High-priority exact-English review required** | Q-7.1-019; §7.1.3.2 |
 
-**Reading this table:** "Standard" means the term is well-established IATA/UN dangerous-goods English usage with low translation risk, but — consistent with `.claude/rules/dgr-stage2b.md` rule 2 — none of these EN renderings were checked this session against a supplied official English 67th Edition text; they were not fabricated as citations, only used as ordinary professional-English DG terminology. "Flagged"/"unverified" rows are genuine open questions for the reviewer, not settled translations.
+"Standard working term" means ordinary professional DG terminology suitable
+for a draft. It does **not** mean that this repository has independently
+verified the exact current English 67th Edition printed wording. The named
+qualified bilingual reviewer remains responsible for that check.
 
 ---
 
 ## Reviewer instructions and checklist
 
-**Who may complete this:** a qualified bilingual DGR instructor (French and English), current on IATA DGR 67th Edition 2026 (Addendum 1 integrated). No other role may close this gate (`.claude/rules/dgr-stage2b.md` rule 4).
+**Who may complete this:** a named qualified bilingual DGR instructor/reviewer
+(French and English), current on IATA DGR 67th Edition 2026. No automated
+process or anonymous role may close this gate.
 
 **What to check, per item:**
 
-1. **Provenance check first:** compare this package's FR working gloss (and therefore the EN draft derived from it) against the actual live-administered FR pilot item text, wherever that system is hosted. This package's FR text was reconstructed from documented source-basis conclusions, not transcribed from the live copy — see the Critical Provenance Note above.
-2. **Regulatory accuracy — FR:** confirm the FR gloss (or, if different, the live item's actual FR text) is still accurate against the current IATA DGR 67th Edition 2026 (Addendum 1) — this should already be settled by the FR-terminal status in `docs/DGR_STAGE_2B_STATUS.md`, but re-confirm if the live text differs from this package's gloss.
-3. **Regulatory accuracy — EN:** confirm the EN draft's terminology and facts against the current English-language IATA DGR 67th Edition text, resolving every item flagged "unverified" in the terminology table (Q-7.1-002's "sauf dérogation" EN equivalent; Q-7.1-008's exact E0-row EN wording; Q-7.1-004/006's class/table-caption naming; Q-7.1-010's dry-ice vs. Carbon-Dioxide-Solid naming choice).
-4. **Meaning-equivalence FR↔EN:** confirm the EN stem, correct answer, and every distractor carry the same regulatory meaning as the FR side — not a loose paraphrase. Pay special attention to Q-7.1-007 (approval vs. derogation/exemption changes the legal meaning) and Q-7.1-001 (must not imply DGR-glossary sourcing in either language).
-5. **Terminology consistency:** confirm EN terms match the terminology table and are used consistently across all 12 items (e.g., "Packing Group" not "packaging group"; "Special Provision" not "special clause").
-6. **Distractor plausibility in English:** confirm each EN distractor remains plausible-but-wrong to an English-speaking candidate — a distractor that only "sounds wrong" in French, or that becomes obviously wrong for an EN-specific reason (e.g., an idiom that doesn't translate), should be flagged for revision.
-7. **Frozen wording notes compliance:** re-check each item against its specific frozen wording note in `docs/DGR_STAGE_2B_STATUS.md` (Q-7.1-001's Tier B/C sourcing constraint; Q-7.1-002's exact substance name; Q-7.1-005's shipment-preparation framing; Q-7.1-006's numeric thresholds; Q-7.1-007's "approbation" vs. "dérogation" lock; Q-7.1-008's final distractor set; Q-7.1-009's "quantité nette par colis" wording; Q-7.1-011's labels-only scope; Q-7.1-012's §1.3.4.1 vs. §3.0.1.5 distinction).
+1. **FR source-of-record first.** For Q001–Q012, compare the working gloss
+   against the actual live-administered FR pilot item. For Q013–Q019, compare
+   against the exact current record in `docs/DGR_PRODUCTION_BANK_7.1.md`.
+2. **Regulatory accuracy — FR.** Reconfirm the tested proposition against
+   authorized current 67th Edition 2026 evidence, preserving explicit
+   `SOURCE GAP` or other non-verified states where applicable.
+3. **Regulatory accuracy — EN.** Verify the EN terminology and proposition
+   against an authorized current English 67th Edition source. Resolve every
+   flagged/unverified term; do not infer exact official English wording from
+   the French text or the older KOST course.
+4. **Meaning-equivalence FR↔EN.** Confirm stem, correct answer and all
+   distractors have the same scope and regulatory meaning.
+5. **Terminology consistency.** Confirm EN terms are used consistently
+   across all 19 items.
+6. **Distractor integrity.** Confirm each EN distractor remains plausible but
+   wrong for the same source-grounded reason as its FR counterpart.
+7. **Correction locks.** In particular preserve Q007 approval-vs-derogation
+   semantics, Q008's corrected E0 distractors, Q009's per-package quantity
+   framing, Q011's labels-only scope, Q012's retention locator, Q018's
+   corrected Table 4.2/Appendix A source basis, and Q019's corrected current
+   four-criterion marking-quality content.
+8. **No status promotion from translation alone.** Draft completion is not
+   bilingual technical review completion and does not authorize production.
 
 **Sign-off format (required, per item):**
 
-```
+```text
 Item: Q-7.1-0XX
-Reviewer name (qualified bilingual DGR instructor): ____________________
+Reviewer name: ____________________
+Reviewer role/qualification (DGR/CBTA): ____________________
+Bilingual competence (FR/EN): ____________________
 Review date (YYYY-MM-DD): ____________________
-Verified against live-administered FR item text (not just this draft): YES / NO
+FR source-of-record checked: YES / NO
 Regulatory accuracy — FR: PASS / FAIL / CONDITIONAL — notes: ____________
 Regulatory accuracy — EN: PASS / FAIL / CONDITIONAL — notes: ____________
 Meaning-equivalence FR↔EN: PASS / FAIL / CONDITIONAL — notes: ____________
 Terminology consistency: PASS / FAIL / CONDITIONAL — notes: ____________
 Distractor plausibility (EN): PASS / FAIL / CONDITIONAL — notes: ____________
-Final status: BILINGUAL TECHNICAL REVIEW COMPLETE / REVISION REQUIRED (specify)
-Approval: [Named reviewer] + [Date]
+Final EN status: BILINGUAL TECHNICAL REVIEW COMPLETE / REVISION REQUIRED
+Final approval: PENDING unless the separate final sign-off gate is completed
 ```
 
-No anonymous or undated sign-off is accepted. Until every field above is
-completed with a named reviewer and a date, the item's EN status stays
+No anonymous, role-only, undated, impossible-date, future-date or
+unqualified sign-off is accepted. Until the required evidence is completed
+by a real named qualified human, the item's EN status stays
 `BILINGUAL TECHNICAL REVIEW REQUIRED` and its Approval field stays
-`PENDING REVIEWER + DATE` — this applies even if the reviewer's technical
-conclusion is "no changes needed." Per `.claude/rules/dgr-stage2b.md` rule
-4, no item may be marked `APPROVED` without this completed sign-off.
+`PENDING REVIEWER + DATE`.
 
 ## Summary
 
-- 12/12 pilot items translated to EN draft status. 0/12 reviewed.
-- 11 items carry a Tier-A-verified FR regulatory basis; Q-7.1-001 carries a
-  confirmed Tier-A-silent / Tier B/C basis — both are terminal FR states,
-  and the EN draft for each preserves the same source-basis distinction.
-- 3 terminology points are explicitly flagged unverified for the reviewer
-  (Q-7.1-002's "sauf dérogation," Q-7.1-008's exact E0 EN row wording,
-  Q-7.1-010's dry-ice naming choice); several more standard-but-unverified
-  class/table-name terms are listed in the terminology table.
-- Q-7.1-013–019 (Batch 1) are explicitly out of scope for this package.
+- **19/19** currently drafted Function 7.1 items now have a durable EN draft
+  review-package entry; **0/19** are claimed reviewed in this update.
+- Q-7.1-001 retains its explicit Tier-A-silent / Tier-B/C source basis and
+  cannot be promoted merely because an EN draft exists.
+- Q-7.1-002 through Q-7.1-019 retain their recorded current FR source states;
+  Q-7.1-013–019 were translated from the authoritative production-bank text,
+  not reconstructed from stale notes.
+- Q-7.1-018's corrected item-specific source locator and Q-7.1-019's corrected
+  current-edition content are preserved explicitly.
+- No item is `APPROVED`; named qualified FR/EN human review and final sign-off
+  remain separate gates.
