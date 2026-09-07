@@ -45,6 +45,14 @@ jobs:
         if: always()
         run: node scripts/test-dgr-official-task-coverage.mjs
 
+      - name: Official-task source-locator regression fixtures
+        if: always()
+        run: node scripts/check-dgr-task-source-locators.mjs --test
+
+      - name: Official-task source-locator consistency gate
+        if: always()
+        run: node scripts/check-dgr-task-source-locators.mjs
+
       - name: Stage 2A blueprint coverage regression fixtures
         if: always()
         run: node scripts/check-dgr-blueprint-coverage.mjs --test
