@@ -69,6 +69,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-approval-chain.mjs
 
+      - name: Cross-artifact approval regression fixtures
+        if: always()
+        run: node scripts/check-dgr-cross-artifact-approval.mjs --test
+
+      - name: Cross-artifact approval consistency gate
+        if: always()
+        run: node scripts/check-dgr-cross-artifact-approval.mjs
+
       - name: Strict Tier-A matrix cross-field gate
         if: always()
         run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
