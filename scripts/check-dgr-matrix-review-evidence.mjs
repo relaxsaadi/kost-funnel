@@ -35,6 +35,12 @@ function normalizedHeader(value) {
   return normalize(value).toLowerCase();
 }
 
+function isMarkdownSeparatorRow(line, expectedCells) {
+  const cells = markdownCells(line);
+  if (cells.length !== expectedCells || expectedCells === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
 function claimsFrVerified(value) {
   const text = normalize(value);
   if (!text || nonVerifiedFrRe.test(text)) return false;
@@ -188,8 +194,8 @@ function validateMatrixText(text, fn, artifact) {
     }
     found = true;
 
-    if (!markdownCells(lines[i + 1] ?? "").length) {
-      errors.push(`${artifact}: matrix header is not followed by a Markdown separator row`);
+    if (!isMarkdownSeparatorRow(lines[i + 1] ?? "", headers.length)) {
+      errors.push(`${artifact}: matrix header is not followed by a valid Markdown separator row`);
       continue;
     }
 
@@ -268,6 +274,16 @@ function runFixtures() {
   expectFixture("en-no-bilingual-evidence", { ...valid, enReviewer: "John Smith — DGR/CBTA Reviewer — 2026-09-06" }, true);
   expectFixture("en-pending-reviewer", { ...valid, enReviewer: "pending DGR bilingual reviewer — 2026-09-06" }, true);
   expectFixture("fr-not-full-name", { ...valid, frReviewer: "Reviewer — 2026-09-06" }, true);
+
+  const firstTaskMasqueradingAsSeparator = [
+    "| Function | Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date |",
+    "| 7.2 | 0.1.1 | FROZEN FR / SOURCE VERIFIED | pending | BILINGUAL TECHNICAL REVIEW COMPLETE | pending |",
+    "| 7.2 | 0.1.2 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending |",
+  ].join("\n");
+  const malformedSeparator = validateMatrixText(firstTaskMasqueradingAsSeparator, "7.2", "first-task-as-separator.md");
+  if (malformedSeparator.errors.length === 0) {
+    throw new Error("first-task-as-separator: expected malformed table to fail closed");
+  }
 
   console.log("DGR matrix review-evidence regression fixtures: PASS");
 }
