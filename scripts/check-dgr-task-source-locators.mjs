@@ -5,7 +5,7 @@
  * sets used by Functions 7.1–7.10.
  *
  * This validates only that each structural task row remains tied to its own
- * function-specific CBTA TABLEAU, the same task row identifier, and a page
+ * function-specific CBTA TABLEAU, the same task/leaf identifier, and a page
  * locator that a human reviewer can reopen. It does not validate licensed
  * IATA text, regulatory correctness, or ANAC/IATA approval.
  */
@@ -50,8 +50,8 @@ function locatorErrors({ fn, taskId, taskSource }) {
   const errors = [];
   const expectedTable = `TABLEAU ${fn}.A`;
   const tablePattern = new RegExp(`\\bTABLEAU\\s+${escapeRegExp(fn)}\\.A\\b`, "i");
-  const rowPattern = new RegExp(
-    `\\brow\\s+${escapeRegExp(taskId)}(?=$|[\\s,;:()])`,
+  const taskLocatorPattern = new RegExp(
+    `\\b(?:row|leaf(?:\\s+row)?)\\s+${escapeRegExp(taskId)}(?=$|[\\s,;:()])`,
     "i",
   );
   const pagePattern = /\b(?:PDF\s+|S1\s+|printed\s+)?p{1,2}\.?\s*\d+(?:\s*[–—-]\s*\d+)?\b/i;
@@ -63,8 +63,8 @@ function locatorErrors({ fn, taskId, taskSource }) {
   if (!tablePattern.test(taskSource)) {
     errors.push(`CBTA task-source reference must point to ${expectedTable}`);
   }
-  if (!rowPattern.test(taskSource)) {
-    errors.push(`CBTA task-source reference must identify row ${taskId}`);
+  if (!taskLocatorPattern.test(taskSource)) {
+    errors.push(`CBTA task-source reference must identify task/leaf ${taskId}`);
   }
   if (!pagePattern.test(taskSource)) {
     errors.push("CBTA task-source reference must include a page locator (p./pp.)");
@@ -148,13 +148,23 @@ function validateTaskSet(fn) {
 }
 
 function runRegressionFixtures() {
-  const valid = locatorErrors({
+  const validRow = locatorErrors({
     fn: "7.2",
     taskId: "SYN-7.2-A",
     taskSource: "Synthetic CBTA locator, TABLEAU 7.2.A, Block 0 row SYN-7.2-A, PDF p.27",
   });
-  if (valid.length) {
-    console.error(`TASK SOURCE LOCATOR REGRESSION: FAIL — valid synthetic locator rejected: ${valid.join("; ")}`);
+  if (validRow.length) {
+    console.error(`TASK SOURCE LOCATOR REGRESSION: FAIL — valid row locator rejected: ${validRow.join("; ")}`);
+    process.exit(1);
+  }
+
+  const validLeaf = locatorErrors({
+    fn: "7.6",
+    taskId: "SYN-7.6-A",
+    taskSource: "Synthetic CBTA locator, TABLEAU 7.6.A, only active Block 6 leaf SYN-7.6-A, PDF p.32",
+  });
+  if (validLeaf.length) {
+    console.error(`TASK SOURCE LOCATOR REGRESSION: FAIL — valid leaf locator rejected: ${validLeaf.join("; ")}`);
     process.exit(1);
   }
 
@@ -173,8 +183,8 @@ function runRegressionFixtures() {
     taskId: "SYN-7.2-A",
     taskSource: "Synthetic CBTA locator, TABLEAU 7.2.A, Block 0 row SYN-7.2-B, PDF p.27",
   });
-  if (!wrongRow.some((error) => error.includes("row SYN-7.2-A"))) {
-    console.error("TASK SOURCE LOCATOR REGRESSION: FAIL — mismatched task-row locator did not fail closed");
+  if (!wrongRow.some((error) => error.includes("task/leaf SYN-7.2-A"))) {
+    console.error("TASK SOURCE LOCATOR REGRESSION: FAIL — mismatched task locator did not fail closed");
     process.exit(1);
   }
 
