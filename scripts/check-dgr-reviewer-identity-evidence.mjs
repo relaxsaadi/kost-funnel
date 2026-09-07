@@ -209,7 +209,7 @@ function validateStructuredReviewArtifacts(text, artifact) {
     }
   }
 
-  for (const match of text.matchAll(/^\s*\*\*Approval:\*\*\s*(.+)$/gim)) {
+  for (const match of text.matchAll(/^\s*(?:[-+*]\s+)?\*\*Approval:\*\*\s*(.+)$/gim)) {
     const value = match[1] ?? "";
     if (/^APPROVED\b/i.test(normalize(value))) {
       errors.push(...identityEvidenceErrors(value, `${artifact}: final APPROVED sign-off`, { approval: true }));
@@ -312,7 +312,10 @@ function fixtures() {
   }, false);
 
   const validItem = `## Q-7.2-001\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR/CBTA Reviewer FR/EN, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
+  const validListItem = validItem.replaceAll("\n**", "\n- **");
   expectArtifact("valid-item", validItem, false);
+  expectArtifact("valid-list-form-item", validListItem, false);
+  expectArtifact("role-only-list-form-final-approval", validListItem.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Regulatory Specialist, 2026-09-06"), true);
   expectArtifact("role-only-fr-completion", validItem.replace("Jane Doe, DGR/CBTA Instructor", "Regulatory Specialist, DGR/CBTA Instructor"), true);
   expectArtifact("role-only-en-completion", validItem.replace("John Smith, Bilingual DGR/CBTA Reviewer FR/EN", "Regulatory Specialist, Bilingual DGR/CBTA Reviewer FR/EN"), true);
   expectArtifact("role-only-final-approval", validItem.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Regulatory Specialist, 2026-09-06"), true);
