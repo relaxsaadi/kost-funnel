@@ -25,7 +25,8 @@ permissions:
   contents: read
 
 jobs:
-  regulatory-artifact-gates:
+  regulatory-governance-integrity:
+    name: Regulatory governance integrity
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -96,6 +97,20 @@ jobs:
         if: always()
         run: node scripts/check-dgr-official-task-coverage.mjs
 
+  full-dgr-readiness:
+    name: Full DGR readiness
+    needs: regulatory-governance-integrity
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Full DGR readiness artifact gate
-        if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs
