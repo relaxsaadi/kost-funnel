@@ -89,6 +89,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-matrix-review-evidence.mjs
 
+      - name: Matrix-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-matrix-table-structure.mjs --test
+
+      - name: Matrix-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-matrix-table-structure.mjs
+
       - name: Reviewer identity-evidence regression fixtures
         if: always()
         run: node scripts/check-dgr-reviewer-identity-evidence.mjs --test
