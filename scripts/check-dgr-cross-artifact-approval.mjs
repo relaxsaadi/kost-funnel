@@ -133,6 +133,11 @@ function validate(records) {
     if (!bankRecords.some((record) => isApproved(record.approval))) {
       errors.push(`${id}: APPROVED exists outside the durable bank/status layer; no bank/status record is itself APPROVED`);
     }
+    for (const record of bankRecords) {
+      if (!isApproved(record.approval)) {
+        errors.push(`${record.artifact}: ${id} (${record.format}) — contradictory/non-approved durable bank/status state for APPROVED item`);
+      }
+    }
     if (!enRecords.length) {
       errors.push(`${id}: APPROVED has no separate EN review-package record`);
       continue;
@@ -141,9 +146,7 @@ function validate(records) {
       errors.push(`${id}: separate EN review package has no canonical completed qualified bilingual DGR/CBTA review`);
     }
     for (const record of enRecords) {
-      const enState = normalize(record.en);
-      if (!enState) continue;
-      const result = completedBilingualReview(enState);
+      const result = completedBilingualReview(record.en);
       if (!result.ok) {
         errors.push(`${record.artifact}: ${id} (${record.format}) — contradictory/non-complete EN package state for APPROVED item: ${result.reason}`);
       }
@@ -191,13 +194,18 @@ function fixtures() {
   const bankPending = bankApproved.replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
   const enComplete = `## Q-7.2-001\n\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:**\n`;
   const enPending = enComplete.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED");
+  const enBlank = `## Q-7.2-001\n\n**EN status:**\n**Approval:**\n`;
   const enApproved = enComplete.replace("**Approval:**", "**Approval:** APPROVED — Jane Doe, 2026-09-06");
   expect("valid-cross-artifact", bankApproved, enComplete, false);
   expect("bank-approved-en-pending", bankApproved, enPending, true);
   expect("en-only-approved-bank-pending", bankPending, enApproved, true);
   expect("bank-approved-no-en-record", bankApproved, "", true);
+  const contradictoryBank = `${bankApproved}\n${bankPending}`;
+  expect("contradictory-bank-record", contradictoryBank, enComplete, true);
   const contradictoryEn = `${enComplete}\n## Q-7.2-001\n\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:**\n`;
   expect("contradictory-en-record", bankApproved, contradictoryEn, true);
+  const blankDuplicateEn = `${enComplete}\n${enBlank}`;
+  expect("blank-duplicate-en-record", bankApproved, blankDuplicateEn, true);
   expect("ordinary-pending", bankPending, enPending, false);
   console.log("DGR cross-artifact approval regression fixtures: PASS");
 }
