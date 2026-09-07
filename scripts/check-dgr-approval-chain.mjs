@@ -118,7 +118,7 @@ function finalApprovalComplete(value = "") {
 
 function field(block, label) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return block.match(new RegExp(`^\\s*\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"))?.[1]?.trim() ?? "";
+  return block.match(new RegExp(`^\\s*(?:[-+*]\\s+)?\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"))?.[1]?.trim() ?? "";
 }
 
 function itemRecords(text, artifact, kind) {
@@ -222,8 +222,12 @@ function expect(name, text, shouldFail) {
 
 function fixtures() {
   const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
+  const validList = valid.replaceAll("\n**", "\n- **");
   const gap = valid.replace("Q-7.2-001", "Q-7.2-002").replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained");
   expect("valid-approved-chain", valid, false);
+  expect("valid-list-form-approved-chain", validList, false);
+  expect("list-form-source-gap-approved", validList.replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained"), true);
+  expect("list-form-pending-en-review", validList.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
   expect("source-gap-approved", gap, true);
   expect("draft-approved", valid.replace("FROZEN FR / SOURCE VERIFIED", "DRAFT — Tier A required"), true);
   expect("missing-fr-review", valid.replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", ""), true);
@@ -236,6 +240,7 @@ function fixtures() {
   expect("future-final-date", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2999-01-01"), true);
   expect("generic-final-reviewer", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Reviewer, 2026-09-06"), true);
   expect("ordinary-pending-item", `## Q-7.2-003\n\n**FR status:** DRAFT\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:** PENDING REVIEWER + DATE\n`, false);
+  expect("ordinary-list-form-pending-item", `## Q-7.2-004\n\n- **FR status:** DRAFT\n- **EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n- **Approval:** PENDING REVIEWER + DATE\n`, false);
   expect("table-approved-before-en-review", `| ID | FR status | Type | Current source basis | EN status | Approval |\n|---|---|---|---|---|---|\n| Q-7.3-001 | FROZEN FR / SOURCE VERIFIED | MCQ | fixture | BILINGUAL TECHNICAL REVIEW REQUIRED | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
   expect("table-approved-missing-bilingual-competence", `| ID | FR status | EN status | Approval |\n|---|---|---|---|\n| Q-7.3-002 | FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06) | BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, DGR Reviewer, 2026-09-06) | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
   console.log("DGR approval-chain regression fixtures: PASS");
