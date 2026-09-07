@@ -77,7 +77,7 @@ function completedBilingualReview(value = "") {
 
 function field(block, label) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return block.match(new RegExp(`^\\s*\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"))?.[1]?.trim() ?? "";
+  return block.match(new RegExp(`^\\s*(?:[-+*]\\s+)?\\*\\*${escaped}:\\*\\*\\s*(.+)$`, "im"))?.[1]?.trim() ?? "";
 }
 
 function itemRecords(text, artifact, kind) {
@@ -251,7 +251,11 @@ function fixtures() {
   const enPending = enComplete.replace(completeStatus, "BILINGUAL TECHNICAL REVIEW REQUIRED");
   const enBlank = `## Q-7.2-001\n\n**EN status:**\n**Approval:**\n`;
   const enApproved = enComplete.replace("**Approval:**", "**Approval:** APPROVED — Jane Doe, 2026-09-06");
+  const listForm = (text) => text.replace(/^\*\*(EN status|Approval):\*\*/gm, "- **$1:**");
   expect("valid-cross-artifact", bankApproved, enComplete, false);
+  expect("valid-list-form-cross-artifact", listForm(bankApproved), listForm(enComplete), false);
+  expect("list-form-bank-approved-en-pending", listForm(bankApproved), listForm(enPending), true);
+  expect("list-form-en-only-approved-bank-pending", listForm(bankPending), listForm(enApproved), true);
   expect("bank-approved-en-pending", bankApproved, enPending, true);
   expect("en-only-approved-bank-pending", bankPending, enApproved, true);
   expect("bank-approved-no-en-record", bankApproved, "", true);
@@ -262,6 +266,7 @@ function fixtures() {
   const blankDuplicateEn = `${enComplete}\n${enBlank}`;
   expect("blank-duplicate-en-record", bankApproved, blankDuplicateEn, true);
   expect("ordinary-pending", bankPending, enPending, false);
+  expect("ordinary-list-form-pending", listForm(bankPending), listForm(enPending), false);
 
   const validTableBank = `| ID | EN status | Approval |\n| --- | --- | --- |\n| Q-7.2-001 | ${completeStatus} | APPROVED — Jane Doe, 2026-09-06 |\n`;
   expect("valid-table", validTableBank, enComplete, false);
