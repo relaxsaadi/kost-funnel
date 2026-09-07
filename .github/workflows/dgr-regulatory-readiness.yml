@@ -41,6 +41,10 @@ jobs:
         if: always()
         run: node scripts/test-dgr-official-task-coverage.mjs
 
+      - name: Stage 2A per-function blueprint coverage gate
+        if: always()
+        run: node scripts/check-dgr-blueprint-coverage.mjs
+
       - name: Review-state semantic regression fixtures
         if: always()
         run: node scripts/check-dgr-readiness-artifacts.mjs --test-review-state-policy
