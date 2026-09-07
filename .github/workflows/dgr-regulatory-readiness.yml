@@ -3,9 +3,11 @@ name: DGR regulatory readiness
 on:
   push:
     branches:
+      - main
       - ai/dgr-stage2b-handoff
     paths:
       - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-**"
       - "scripts/test-dgr-**"
       - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
@@ -13,6 +15,7 @@ on:
   pull_request:
     paths:
       - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-**"
       - "scripts/test-dgr-**"
       - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
