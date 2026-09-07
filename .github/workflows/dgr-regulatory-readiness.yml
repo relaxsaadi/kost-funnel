@@ -61,6 +61,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-review-evidence-semantics.mjs
 
+      - name: Terminal review-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-terminal-review-evidence.mjs --test
+
+      - name: Terminal review-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-terminal-review-evidence.mjs
+
       - name: Approval-chain regression fixtures
         if: always()
         run: node scripts/check-dgr-approval-chain.mjs --test
