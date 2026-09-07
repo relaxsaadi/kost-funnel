@@ -39,6 +39,12 @@ function looksLikeDgrCredential(value = "") {
   return /\bDGR\b|\bCBTA\b|dangerous\s+goods|marchandises\s+dangereuses/i.test(text);
 }
 
+function looksExplicitlyBilingual(value = "") {
+  const text = normalize(value);
+  if (!text || /(?:^|\b)(?:pending|tbd|todo|unknown|unnamed|à renseigner|a renseigner|non renseigné|non renseigne)(?:\b|$)|[<>]/i.test(text)) return false;
+  return /\bbilingual\b|\bbilingue\b|\bFR\s*[\/+&-]\s*EN\b|\bEN\s*[\/+&-]\s*FR\b|French\s*[\/+&-]\s*English|English\s*[\/+&-]\s*French|fran[cç]ais\s*[\/+&-]\s*anglais|anglais\s*[\/+&-]\s*fran[cç]ais/i.test(text);
+}
+
 function isRealNonFutureIsoDate(value = "") {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
@@ -94,6 +100,9 @@ function completedReview(value, kind) {
         ? "FR reviewer DGR/CBTA role/credential missing"
         : "EN reviewer bilingual DGR/CBTA role/credential missing",
     };
+  }
+  if (kind === "en" && !looksExplicitlyBilingual(credential)) {
+    return { ok: false, reason: "EN reviewer credential does not explicitly establish bilingual competence" };
   }
   return { ok: true };
 }
@@ -221,12 +230,14 @@ function fixtures() {
   expect("missing-fr-credential", valid.replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, Trainer, 2026-09-06"), true);
   expect("pending-en-review", valid.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
   expect("missing-en-credential", valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, 2026-09-06"), true);
+  expect("missing-en-bilingual-competence", valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, DGR Reviewer, 2026-09-06"), true);
   expect("impossible-fr-date", valid.replaceAll("2026-09-06", "2026-02-31"), true);
   expect("future-en-date", valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2999-01-01"), true);
   expect("future-final-date", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2999-01-01"), true);
   expect("generic-final-reviewer", valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Reviewer, 2026-09-06"), true);
   expect("ordinary-pending-item", `## Q-7.2-003\n\n**FR status:** DRAFT\n**EN status:** BILINGUAL TECHNICAL REVIEW REQUIRED\n**Approval:** PENDING REVIEWER + DATE\n`, false);
   expect("table-approved-before-en-review", `| ID | FR status | Type | Current source basis | EN status | Approval |\n|---|---|---|---|---|---|\n| Q-7.3-001 | FROZEN FR / SOURCE VERIFIED | MCQ | fixture | BILINGUAL TECHNICAL REVIEW REQUIRED | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
+  expect("table-approved-missing-bilingual-competence", `| ID | FR status | EN status | Approval |\n|---|---|---|---|\n| Q-7.3-002 | FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06) | BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, DGR Reviewer, 2026-09-06) | APPROVED — Jane Doe, 2026-09-06 |\n`, true);
   console.log("DGR approval-chain regression fixtures: PASS");
 }
 
