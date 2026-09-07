@@ -96,22 +96,57 @@ function cells(line) {
   return text.startsWith("|") && text.endsWith("|") ? text.slice(1, -1).split("|").map((value) => value.trim()) : [];
 }
 
+function isMarkdownSeparator(row, width) {
+  return row.length === width && row.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function approvalTableHeader(line) {
+  const headers = cells(line);
+  const normalized = headers.map((value) => normalize(value).toLowerCase());
+  const idIndex = normalized.indexOf("id");
+  const enIndex = normalized.indexOf("en status");
+  const approvalIndex = normalized.indexOf("approval");
+  if (idIndex < 0 || enIndex < 0 || approvalIndex < 0) return null;
+  return { headers, idIndex, enIndex, approvalIndex };
+}
+
+function tableStructureErrors(text, artifact) {
+  const lines = text.split(/\r?\n/);
+  const errors = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const header = approvalTableHeader(lines[i]);
+    if (!header) continue;
+    const separator = cells(lines[i + 1] ?? "");
+    if (!isMarkdownSeparator(separator, header.headers.length)) {
+      errors.push(`${artifact}: approval table header at line ${i + 1} is not followed by a valid same-width Markdown separator`);
+      continue;
+    }
+    for (let j = i + 2; j < lines.length; j += 1) {
+      const row = cells(lines[j]);
+      if (!row.length) break;
+      if (row.length !== header.headers.length) {
+        errors.push(`${artifact}: approval table row at line ${j + 1} has ${row.length} column(s); expected ${header.headers.length}`);
+      }
+    }
+  }
+  return errors;
+}
+
 function tableRecords(text, artifact, kind) {
   const lines = text.split(/\r?\n/);
   const out = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const headers = cells(lines[i]);
-    const normalized = headers.map((value) => normalize(value).toLowerCase());
-    const idIndex = normalized.indexOf("id");
-    const enIndex = normalized.indexOf("en status");
-    const approvalIndex = normalized.indexOf("approval");
-    if (idIndex < 0 || enIndex < 0 || approvalIndex < 0 || !cells(lines[i + 1] ?? "").length) continue;
+    const header = approvalTableHeader(lines[i]);
+    if (!header) continue;
+    const separator = cells(lines[i + 1] ?? "");
+    if (!isMarkdownSeparator(separator, header.headers.length)) continue;
     for (let j = i + 2; j < lines.length; j += 1) {
       const row = cells(lines[j]);
       if (!row.length) break;
-      const id = normalize(row[idIndex] ?? "").toUpperCase();
+      if (row.length !== header.headers.length) continue;
+      const id = normalize(row[header.idIndex] ?? "").toUpperCase();
       if (!idPattern.test(id)) continue;
-      out.push({ id, en: row[enIndex] ?? "", approval: row[approvalIndex] ?? "", artifact, kind, format: "table" });
+      out.push({ id, en: row[header.enIndex] ?? "", approval: row[header.approvalIndex] ?? "", artifact, kind, format: "table" });
     }
   }
   return out;
@@ -160,16 +195,24 @@ function read(relative) {
   return fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : "";
 }
 
+function repositoryArtifacts() {
+  const artifacts = [{ path: "docs/DGR_STAGE_2B_STATUS.md", kind: "bank" }];
+  for (const fn of functions) {
+    artifacts.push({ path: `docs/DGR_PRODUCTION_BANK_${fn}.md`, kind: "bank" });
+    artifacts.push({ path: `docs/DGR_EN_REVIEW_PACKAGE_${fn}.md`, kind: "en" });
+  }
+  return artifacts;
+}
+
 function repositoryCheck() {
   const records = [];
-  records.push(...recordsFromText(read("docs/DGR_STAGE_2B_STATUS.md"), "docs/DGR_STAGE_2B_STATUS.md", "bank"));
-  for (const fn of functions) {
-    const bank = `docs/DGR_PRODUCTION_BANK_${fn}.md`;
-    const en = `docs/DGR_EN_REVIEW_PACKAGE_${fn}.md`;
-    records.push(...recordsFromText(read(bank), bank, "bank"));
-    records.push(...recordsFromText(read(en), en, "en"));
+  const structuralErrors = [];
+  for (const artifact of repositoryArtifacts()) {
+    const text = read(artifact.path);
+    structuralErrors.push(...tableStructureErrors(text, artifact.path));
+    records.push(...recordsFromText(text, artifact.path, artifact.kind));
   }
-  const errors = validate(records);
+  const errors = [...structuralErrors, ...validate(records)];
   if (errors.length) {
     errors.forEach((error) => console.error(`ERROR: ${error}`));
     console.error(`\nDGR CROSS-ARTIFACT APPROVAL CHECK: FAIL (${errors.length} issue(s))`);
@@ -180,20 +223,32 @@ function repositoryCheck() {
   console.log("PASS validates only cross-artifact approval consistency; it does not prove regulatory correctness or ANAC/IATA approval.");
 }
 
-function fixtureRecords(bankText, enText) {
-  return [...recordsFromText(bankText, "bank.md", "bank"), ...recordsFromText(enText, "en.md", "en")];
+function fixtureState(bankText, enText) {
+  const specs = [
+    { text: bankText, artifact: "bank.md", kind: "bank" },
+    { text: enText, artifact: "en.md", kind: "en" },
+  ];
+  const records = [];
+  const errors = [];
+  for (const spec of specs) {
+    errors.push(...tableStructureErrors(spec.text, spec.artifact));
+    records.push(...recordsFromText(spec.text, spec.artifact, spec.kind));
+  }
+  errors.push(...validate(records));
+  return { records, errors };
 }
 
 function expect(name, bankText, enText, shouldFail) {
-  const errors = validate(fixtureRecords(bankText, enText));
+  const { errors } = fixtureState(bankText, enText);
   if ((errors.length > 0) !== shouldFail) throw new Error(`${name}: expected fail=${shouldFail}, got ${errors.length}: ${errors.join(" | ")}`);
 }
 
 function fixtures() {
-  const bankApproved = `## Q-7.2-001\n\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
+  const completeStatus = "BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)";
+  const bankApproved = `## Q-7.2-001\n\n**EN status:** ${completeStatus}\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
   const bankPending = bankApproved.replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
-  const enComplete = `## Q-7.2-001\n\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:**\n`;
-  const enPending = enComplete.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED");
+  const enComplete = `## Q-7.2-001\n\n**EN status:** ${completeStatus}\n**Approval:**\n`;
+  const enPending = enComplete.replace(completeStatus, "BILINGUAL TECHNICAL REVIEW REQUIRED");
   const enBlank = `## Q-7.2-001\n\n**EN status:**\n**Approval:**\n`;
   const enApproved = enComplete.replace("**Approval:**", "**Approval:** APPROVED — Jane Doe, 2026-09-06");
   expect("valid-cross-artifact", bankApproved, enComplete, false);
@@ -207,6 +262,16 @@ function fixtures() {
   const blankDuplicateEn = `${enComplete}\n${enBlank}`;
   expect("blank-duplicate-en-record", bankApproved, blankDuplicateEn, true);
   expect("ordinary-pending", bankPending, enPending, false);
+
+  const validTableBank = `| ID | EN status | Approval |\n| --- | --- | --- |\n| Q-7.2-001 | ${completeStatus} | APPROVED — Jane Doe, 2026-09-06 |\n`;
+  expect("valid-table", validTableBank, enComplete, false);
+  const firstDataAsSeparator = `| ID | EN status | Approval |\n| Q-7.2-001 | ${completeStatus} | APPROVED — Jane Doe, 2026-09-06 |\n`;
+  expect("first-data-row-cannot-masquerade-as-separator", firstDataAsSeparator, enComplete, true);
+  const wrongWidthSeparator = `| ID | EN status | Approval |\n| --- | --- |\n| Q-7.2-001 | ${completeStatus} | APPROVED — Jane Doe, 2026-09-06 |\n`;
+  expect("wrong-width-separator", wrongWidthSeparator, enComplete, true);
+  const wrongWidthData = `| ID | EN status | Approval |\n| --- | --- | --- |\n| Q-7.2-001 | ${completeStatus} | APPROVED — Jane Doe, 2026-09-06 | extra |\n`;
+  expect("wrong-width-data-row", wrongWidthData, enComplete, true);
+
   console.log("DGR cross-artifact approval regression fixtures: PASS");
 }
 
