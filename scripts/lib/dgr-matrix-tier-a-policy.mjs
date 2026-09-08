@@ -12,10 +12,28 @@ export function isVerifiedFrState(value) {
   return /FROZEN|SOURCE VERIFIED|\bVERIFIED\b/i.test(text);
 }
 
+export function hasIataDgrSourceIdentity(value) {
+  const text = String(value ?? "")
+    .replace(/[`*_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Deterministic provenance syntax only. `DGR` is the repository's canonical
+  // shorthand for the IATA Dangerous Goods Regulations, so an explicit DGR
+  // token is sufficient source-family identification. If the title is spelled
+  // out instead, require the IATA name next to it so a generic "dangerous goods
+  // regulations" phrase cannot satisfy the gate by accident.
+  return Boolean(
+    /\bDGR\b/i.test(text) ||
+      /\bIATA\b.{0,48}\bDangerous\s+Goods\s+Regulations?\b/i.test(text) ||
+      /\bDangerous\s+Goods\s+Regulations?\b.{0,48}\bIATA\b/i.test(text),
+  );
+}
+
 export function hasCurrentEdition2026(value) {
   const text = String(value ?? "");
   const hasEdition = /\b67(?:th|e|ème|eme)\b|67th edition|67e édition/i.test(text);
-  return hasEdition && /\b2026\b/.test(text);
+  return hasIataDgrSourceIdentity(text) && hasEdition && /\b2026\b/.test(text);
 }
 
 export function hasConcreteLocator(value) {
