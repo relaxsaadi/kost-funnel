@@ -17,7 +17,7 @@ const expectedHeaders = [
   "active",
 ];
 const unresolvedBilingualRefRe =
-  /(?:^[-–—]+$)|\b(?:PENDING|TBD|TODO|UNKNOWN|MISSING|UNVERIFIED|UNCONFIRMED|NOT\s+VERIFIED|NOT\s+YET\s+VERIFIED|NO\s+EVIDENCE|NO\s+REFERENCE|WITHOUT\s+EVIDENCE|ABSENT|EXPIRED|REVOKED)\b/i;
+  /(?:^[-–—]+$)|\b(?:PENDING|TBD|TODO|UNKNOWN|N\/?A|NONE|MISSING|UNVERIFIED|UNCONFIRMED|NOT\s+VERIFIED|NOT\s+YET\s+VERIFIED|NO\s+EVIDENCE|NO\s+REFERENCE|WITHOUT\s+EVIDENCE|ABSENT|EXPIRED|REVOKED)\b/i;
 
 function normalize(value = "") {
   return String(value).replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
@@ -148,6 +148,8 @@ function fixtures() {
 
   for (const unresolvedRef of [
     "PENDING",
+    "N/A",
+    "NONE",
     "PENDING owner review",
     "language evidence UNVERIFIED",
     "NO EVIDENCE ON FILE",
