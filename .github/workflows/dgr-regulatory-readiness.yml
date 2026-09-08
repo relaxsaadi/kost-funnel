@@ -129,6 +129,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-review-evidence-semantics.mjs
 
+      - name: Item-metadata structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-item-metadata-structure.mjs --test
+
+      - name: Item-metadata structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-item-metadata-structure.mjs
+
       - name: Durable list-status review semantics regression fixtures
         if: always()
         run: node scripts/check-dgr-durable-review-status-semantics.mjs --test
