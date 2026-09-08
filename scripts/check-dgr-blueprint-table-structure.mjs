@@ -8,6 +8,8 @@
  * ANAC/IATA approval, or production readiness.
  *
  * Invariants for every Function 7.1 through 7.10 blueprint task table:
+ * - a recognized task-table header must contain exactly one task-identifier
+ *   header alias, in the first column;
  * - a recognized task-table header must be immediately followed by a real
  *   Markdown separator row;
  * - the separator width must equal the header width;
@@ -23,7 +25,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
-const taskTableHeaders = new Set(["id", "official task", "task id", "sub-task id", "subtask id"]);
+const taskIdHeaderAliases = new Set(["id", "official task", "task id", "sub-task id", "subtask id"]);
 
 let failed = false;
 
@@ -51,6 +53,10 @@ function isMarkdownSeparatorRow(cells, expectedWidth) {
   return cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")));
 }
 
+function taskIdHeaderCount(header) {
+  return header.filter((cell) => taskIdHeaderAliases.has(cell.toLowerCase())).length;
+}
+
 function validateBlueprintTableStructure(text, label, report = fail) {
   const lines = text.split(/\r?\n/);
   let taskTables = 0;
@@ -60,9 +66,16 @@ function validateBlueprintTableStructure(text, label, report = fail) {
     if (!header?.length) continue;
 
     const firstHeader = (header[0] ?? "").toLowerCase();
-    if (!taskTableHeaders.has(firstHeader)) continue;
+    if (!taskIdHeaderAliases.has(firstHeader)) continue;
 
     taskTables += 1;
+    const identifierColumns = taskIdHeaderCount(header);
+    if (identifierColumns !== 1) {
+      report(
+        `${label}: task-table header at line ${i + 1} has ${identifierColumns} task-identifier header columns; expected exactly one in the first column`,
+      );
+    }
+
     const expectedWidth = header.length;
     const separator = parseMarkdownCells(lines[i + 1] ?? "");
     if (!isMarkdownSeparatorRow(separator, expectedWidth)) {
@@ -111,8 +124,25 @@ function runRegressionFixtures() {
   );
 
   expectClean(
+    "fixture alternate identifier alias",
+    `# Function 7.1\n\n| Official task | Recovered source-yield ceiling | Blueprint state |\n|---|---|---|\n| 0.1.1 | 2 | RECOVERED |`,
+  );
+
+  expectClean(
     "fixture combined",
     `# Function 7.2\n\n| ID | Sub-task | Count |\n|---|---|---|\n| 7.1 + 7.2 (combined pool) | Shared source-supported pool | 2 |`,
+  );
+
+  expectRejected(
+    "fixture duplicate exact identifier header",
+    `# Function 7.9\n\n| ID | ID | Sub-task |\n|---|---|---|\n| 0.1.1 | 9.9.9 | A |`,
+    "task-identifier header columns; expected exactly one",
+  );
+
+  expectRejected(
+    "fixture duplicate mixed identifier aliases",
+    `# Function 7.9\n\n| ID | Task ID | Sub-task |\n|---|---|---|\n| 0.1.1 | 9.9.9 | A |`,
+    "task-identifier header columns; expected exactly one",
   );
 
   expectRejected(
