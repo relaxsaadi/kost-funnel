@@ -121,6 +121,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-controlled-reviewer-registry.mjs
 
+      - name: Reviewer admission chronology regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-admission-chronology.mjs --test
+
+      - name: Reviewer admission chronology consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-admission-chronology.mjs
+
       - name: Active reviewer qualification-evidence regression fixtures
         if: always()
         run: node scripts/check-dgr-reviewer-qualification-evidence.mjs --test
