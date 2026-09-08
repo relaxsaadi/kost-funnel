@@ -77,7 +77,7 @@ function todayIsoUtc() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function reviewerEvidenceErrors(value, label, { requireBilingualDgr = false } = {}) {
+function reviewerEvidenceErrors(value, label, { requireDgr = false, requireBilingualDgr = false } = {}) {
   const text = normalize(value);
   const errors = [];
   const dates = [...text.matchAll(isoDateRe)].map((match) => match[0]);
@@ -113,10 +113,13 @@ function reviewerEvidenceErrors(value, label, { requireBilingualDgr = false } = 
     errors.push(`${label}: reviewer evidence does not identify a full named person`);
   }
 
-  if (requireBilingualDgr) {
-    if (!/\b(?:DGR|CBTA)\b/i.test(text)) {
-      errors.push(`${label}: completed EN review lacks explicit DGR/CBTA role or credential evidence`);
+  if (requireDgr || requireBilingualDgr) {
+    if (!/\b(?:DGR|CBTA)\b|dangerous\s+goods|marchandises\s+dangereuses/i.test(text)) {
+      errors.push(`${label}: claimed-complete review lacks explicit DGR/CBTA role or credential evidence`);
     }
+  }
+
+  if (requireBilingualDgr) {
     if (!/(?:\bbilingu(?:al|e)?\b|\bFR\s*[/&+\-]\s*EN\b|\bEN\s*[/&+\-]\s*FR\b|french.*english|english.*french|fran[cç]ais.*anglais|anglais.*fran[cç]ais)/i.test(text)) {
       errors.push(`${label}: completed EN review lacks explicit bilingual FR/EN competence evidence`);
     }
@@ -218,7 +221,11 @@ function validateMatrixText(text, fn, artifact) {
       const enReviewer = cells[enReviewerIndex] ?? "";
 
       if (claimsFrVerified(frState)) {
-        errors.push(...reviewerEvidenceErrors(frReviewer, `${artifact}: task ${taskId} FR verification`));
+        errors.push(
+          ...reviewerEvidenceErrors(frReviewer, `${artifact}: task ${taskId} FR verification`, {
+            requireDgr: true,
+          }),
+        );
       }
       if (claimsEnComplete(enState)) {
         errors.push(
@@ -254,7 +261,7 @@ function expectFixture(name, values, shouldFail) {
 function runFixtures() {
   const valid = {
     frState: "FROZEN FR / SOURCE VERIFIED",
-    frReviewer: "Jane Doe — 2026-09-06",
+    frReviewer: "Jane Doe — DGR/CBTA Instructor — 2026-09-06",
     enState: "BILINGUAL TECHNICAL REVIEW COMPLETE",
     enReviewer: "John Smith — Bilingual DGR/CBTA Reviewer FR/EN — 2026-09-06",
   };
@@ -266,14 +273,16 @@ function runFixtures() {
     enState: "BILINGUAL TECHNICAL REVIEW REQUIRED",
     enReviewer: "pending",
   }, false);
-  expectFixture("fr-impossible-date", { ...valid, frReviewer: "Jane Doe — 2026-02-31" }, true);
-  expectFixture("fr-future-date", { ...valid, frReviewer: "Jane Doe — 2999-01-01" }, true);
+  expectFixture("fr-no-dgr-credential", { ...valid, frReviewer: "Jane Doe — Trainer — 2026-09-06" }, true);
+  expectFixture("fr-dangerous-goods-credential", { ...valid, frReviewer: "Jane Doe — Dangerous Goods Instructor — 2026-09-06" }, false);
+  expectFixture("fr-impossible-date", { ...valid, frReviewer: "Jane Doe — DGR Instructor — 2026-02-31" }, true);
+  expectFixture("fr-future-date", { ...valid, frReviewer: "Jane Doe — DGR Instructor — 2999-01-01" }, true);
   expectFixture("en-impossible-date", { ...valid, enReviewer: "John Smith — Bilingual DGR Reviewer FR/EN — 2026-02-31" }, true);
   expectFixture("en-future-date", { ...valid, enReviewer: "John Smith — Bilingual DGR Reviewer FR/EN — 2999-01-01" }, true);
   expectFixture("en-no-dgr-credential", { ...valid, enReviewer: "John Smith — Bilingual Reviewer FR/EN — 2026-09-06" }, true);
   expectFixture("en-no-bilingual-evidence", { ...valid, enReviewer: "John Smith — DGR/CBTA Reviewer — 2026-09-06" }, true);
   expectFixture("en-pending-reviewer", { ...valid, enReviewer: "pending DGR bilingual reviewer — 2026-09-06" }, true);
-  expectFixture("fr-not-full-name", { ...valid, frReviewer: "Reviewer — 2026-09-06" }, true);
+  expectFixture("fr-not-full-name", { ...valid, frReviewer: "Reviewer — DGR Instructor — 2026-09-06" }, true);
 
   const firstTaskMasqueradingAsSeparator = [
     "| Function | Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date |",
