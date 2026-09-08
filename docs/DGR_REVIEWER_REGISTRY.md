@@ -16,7 +16,7 @@ The deterministic CI check validates only the **recorded governance structure**.
 - `Reviewer ID` must be a stable non-secret identifier such as `DGR-RVW-0001`. Do not use email addresses, phone numbers, account IDs, passwords, access tokens, certificate secrets, or other sensitive identifiers.
 - `Full name` must be the real human name that will appear in the durable review/sign-off evidence.
 - `Record type` must be `HUMAN`.
-- `DGR/CBTA qualification evidence` must record a concise non-secret qualification/role conclusion. Do not paste licensed IATA content or personal credential scans into this repository.
+- `DGR/CBTA qualification evidence` must record a concise non-secret affirmative qualification/role conclusion. For an active `OWNER VERIFIED` reviewer, wording that is explicitly unresolved or negative — for example `PENDING`, `MISSING`, `UNVERIFIED`, `NOT QUALIFIED`, `NO ... QUALIFICATION`, `EXPIRED`, or `REVOKED` — is not qualification evidence even if the text contains a DGR/CBTA keyword. Do not paste licensed IATA content or personal credential scans into this repository.
 - `Bilingual FR/EN evidence` is `YES`, `NO`, or `PENDING`. EN terminal review requires `YES`.
 - `Admission state` is `PENDING` until the owner has actually checked the reviewer identity/role evidence. Only the owner may move it to `OWNER VERIFIED`.
 - `Admission date` for `OWNER VERIFIED` must be the real, valid, non-future ISO date of that admission decision.
@@ -45,7 +45,7 @@ Final approval:
 APPROVED — <exact registry full name>, reviewer-id=DGR-RVW-0001, <YYYY-MM-DD>
 ```
 
-A terminal state fails closed when the reviewer ID is absent, duplicated, unknown, inactive, not owner-verified, name-mismatched, missing DGR/CBTA qualification evidence, or (for EN) missing `Bilingual FR/EN evidence = YES`.
+A terminal state fails closed when the reviewer ID is absent, duplicated, unknown, inactive, not owner-verified, name-mismatched, missing affirmative DGR/CBTA qualification evidence, carrying explicitly unresolved/negative qualification wording while active, or (for EN) missing `Bilingual FR/EN evidence = YES`.
 
 ## Pending / gap states
 
