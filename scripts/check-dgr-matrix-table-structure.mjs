@@ -53,9 +53,32 @@ function isMarkdownSeparator(line, expectedCells) {
   );
 }
 
-function isCanonicalMatrixHeader(headers) {
+function isCanonicalMatrixHeaderCandidate(headers) {
   const normalized = headers.map(normalize);
   return requiredHeaders.every((required) => normalized.includes(required));
+}
+
+function canonicalHeaderErrors(headers, artifact, lineNumber) {
+  const errors = [];
+  const normalized = headers.map(normalize);
+  const unknown = normalized.filter((header) => !requiredHeaders.includes(header));
+  const duplicate = requiredHeaders.filter(
+    (required) => normalized.filter((header) => header === required).length > 1,
+  );
+
+  if (headers.length !== requiredHeaders.length || unknown.length || duplicate.length) {
+    const details = [];
+    if (duplicate.length) details.push(`duplicate required header(s): ${duplicate.join(", ")}`);
+    if (unknown.length) details.push(`unknown/extra header(s): ${unknown.join(", ")}`);
+    if (headers.length !== requiredHeaders.length) {
+      details.push(`found ${headers.length} column(s), expected exactly ${requiredHeaders.length}`);
+    }
+    errors.push(
+      `${artifact}: canonical matrix header at line ${lineNumber} must contain every required governance column exactly once and no extras (${details.join("; ")})`,
+    );
+  }
+
+  return errors;
 }
 
 function validateMatrixText(text, artifact) {
@@ -66,7 +89,13 @@ function validateMatrixText(text, artifact) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const headers = cells(lines[i]);
-    if (!headers.length || !isCanonicalMatrixHeader(headers)) continue;
+    if (!headers.length || !isCanonicalMatrixHeaderCandidate(headers)) continue;
+
+    const headerErrors = canonicalHeaderErrors(headers, artifact, i + 1);
+    if (headerErrors.length) {
+      errors.push(...headerErrors);
+      continue;
+    }
 
     if (found) {
       errors.push(`${artifact}: more than one canonical source/competency matrix table found`);
@@ -188,6 +217,18 @@ function fixtures() {
 
   const alignedSeparator = `| ${requiredHeaders.map((_, index) => (index % 2 ? "---:" : ":---")).join(" | ")} |`;
   expect("aligned-separator", [header, alignedSeparator, row].join("\n"), false);
+
+  const duplicateHeaders = [...requiredHeaders, "current iata dgr tier a evidence"];
+  const duplicateHeader = `| ${duplicateHeaders.join(" | ")} |`;
+  const duplicateSeparator = `| ${duplicateHeaders.map(() => "---").join(" | ")} |`;
+  const duplicateRow = `| ${duplicateHeaders.map((_, index) => (index === 0 ? "7.2" : index === 1 ? "0.1.1" : `v${index + 1}`)).join(" | ")} |`;
+  expect("duplicate-governance-header", [duplicateHeader, duplicateSeparator, duplicateRow].join("\n"), true);
+
+  const extraHeaders = [...requiredHeaders, "shadow notes"];
+  const extraHeader = `| ${extraHeaders.join(" | ")} |`;
+  const extraSeparator = `| ${extraHeaders.map(() => "---").join(" | ")} |`;
+  const extraRow = `| ${extraHeaders.map((_, index) => (index === 0 ? "7.2" : index === 1 ? "0.1.1" : `v${index + 1}`)).join(" | ")} |`;
+  expect("unknown-extra-header", [extraHeader, extraSeparator, extraRow].join("\n"), true);
 
   console.log("DGR matrix-table structure regression fixtures: PASS");
 }
