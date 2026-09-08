@@ -19,12 +19,17 @@ export function hasIataDgrSourceIdentity(value) {
     .trim();
 
   // Deterministic provenance syntax only. `DGR` is the repository's canonical
-  // shorthand for the IATA Dangerous Goods Regulations, so an explicit DGR
-  // token is sufficient source-family identification. If the title is spelled
-  // out instead, require the IATA name next to it so a generic "dangerous goods
-  // regulations" phrase cannot satisfy the gate by accident.
+  // shorthand for the IATA Dangerous Goods Regulations, but it is accepted as
+  // source-family identity only when it is itself the source lead (optionally
+  // prefixed by IATA or a controlled governance-state label). A `DGR` token
+  // embedded in another named source such as "Company DGR Manual" or "Local
+  // DGR Guide" must not be promoted to direct IATA Tier-A provenance.
+  const shorthand = /^(?:(?:SOURCE VERIFIED|FROZEN FR|VERIFIED|CONFIRMED|DIRECT TIER[- ]?A|TIER[- ]?A)\s*(?:[-—:]\s*)?)*(?:IATA\s+)?DGR\b/i.test(
+    text,
+  );
+
   return Boolean(
-    /\bDGR\b/i.test(text) ||
+    shorthand ||
       /\bIATA\b.{0,48}\bDangerous\s+Goods\s+Regulations?\b/i.test(text) ||
       /\bDangerous\s+Goods\s+Regulations?\b.{0,48}\bIATA\b/i.test(text),
   );

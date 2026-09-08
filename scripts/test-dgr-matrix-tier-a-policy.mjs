@@ -20,9 +20,13 @@ assert.equal(isVerifiedFrState("SOURCE GAP"), false);
 assert.equal(hasIataDgrSourceIdentity("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasIataDgrSourceIdentity("DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasIataDgrSourceIdentity("IATA Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)"), true);
+assert.equal(hasIataDgrSourceIdentity("SOURCE VERIFIED — DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasIataDgrSourceIdentity("67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasIataDgrSourceIdentity("IATA 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasIataDgrSourceIdentity("Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("Company DGR Manual 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("Local DGR Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("ICAO DGR Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
@@ -31,6 +35,16 @@ assert.equal(
   hasCurrentEdition2026("DGR 66th Edition 2025 §1.1; internal reference 67th Edition 2026 §2.2"),
   false,
   "an older DGR source and a separate current local source must not synthesize current DGR identity",
+);
+assert.equal(
+  hasCurrentEdition2026("Company DGR Manual 67th Edition 2026 §2.2"),
+  false,
+  "a third-party DGR-named manual must not satisfy direct current IATA DGR identity",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("Local DGR Guide 67th Edition 2026 §2.2"),
+  false,
+  "a local DGR-named guide must not satisfy direct current IATA DGR evidence",
 );
 assert.equal(
   hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026; internal reference §2.2"),
@@ -81,6 +95,8 @@ for (const tierAEvidence of [
   "67th Edition 2026 § 5.0.1.2(c)",
   "IATA 67th Edition 2026 § 5.0.1.2(c)",
   "Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)",
+  "Company DGR Manual 67th Edition 2026 § 5.0.1.2(c)",
+  "Local DGR Guide 67th Edition 2026 § 5.0.1.2(c)",
 ]) {
   assert.ok(
     errors({
