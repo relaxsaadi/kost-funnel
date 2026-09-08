@@ -16,7 +16,8 @@ const expectedHeaders = [
   "evidence reference",
   "active",
 ];
-const placeholderRefRe = /^(?:[-–—]+|PENDING|TBD|TODO|UNKNOWN|N\/?A|NONE|MISSING|UNVERIFIED|NOT\s+VERIFIED|NO\s+EVIDENCE|NO\s+REFERENCE)$/i;
+const unresolvedBilingualRefRe =
+  /(?:^[-–—]+$)|\b(?:PENDING|TBD|TODO|UNKNOWN|N\/?A|NONE|MISSING|UNVERIFIED|UNCONFIRMED|NOT\s+VERIFIED|NOT\s+YET\s+VERIFIED|NO\s+EVIDENCE|NO\s+REFERENCE|WITHOUT\s+EVIDENCE|ABSENT|EXPIRED|REVOKED)\b/i;
 
 function normalize(value = "") {
   return String(value).replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
@@ -102,9 +103,9 @@ export function validateBilingualEvidenceReferences(text, artifact = registryPat
         continue;
       }
 
-      if (!refs[0] || placeholderRefRe.test(refs[0])) {
+      if (!refs[0] || unresolvedBilingualRefRe.test(refs[0])) {
         errors.push(
-          `${artifact}: ${reviewerId}: bilingual-ref must identify owner-reviewed bilingual FR/EN evidence and cannot be blank, pending, missing or otherwise unresolved`,
+          `${artifact}: ${reviewerId}: bilingual-ref must identify owner-reviewed bilingual FR/EN evidence and cannot contain pending, missing, unverified or otherwise unresolved evidence semantics`,
         );
       }
     }
@@ -144,14 +145,29 @@ function fixtures() {
     ),
     true,
   );
-  expect(
-    "yes-with-placeholder-reference",
-    validateBilingualEvidenceReferences(
-      fixtureRegistry({ evidence: "qualification-ref=DGR-cred-001; bilingual-ref=PENDING" }),
-      "fixture.md",
-    ),
-    true,
-  );
+
+  for (const unresolvedRef of [
+    "PENDING",
+    "N/A",
+    "NONE",
+    "PENDING owner review",
+    "language evidence UNVERIFIED",
+    "NO EVIDENCE ON FILE",
+    "reference MISSING from owner record",
+    "language evidence NOT YET VERIFIED",
+  ]) {
+    expect(
+      `yes-with-unresolved-reference:${unresolvedRef}`,
+      validateBilingualEvidenceReferences(
+        fixtureRegistry({
+          evidence: `qualification-ref=DGR-cred-001; bilingual-ref=${unresolvedRef}`,
+        }),
+        "fixture.md",
+      ),
+      true,
+    );
+  }
+
   expect(
     "yes-with-duplicate-reference",
     validateBilingualEvidenceReferences(
