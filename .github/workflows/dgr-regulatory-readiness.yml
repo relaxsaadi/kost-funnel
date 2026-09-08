@@ -200,6 +200,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Require regulatory governance integrity
+        if: needs.regulatory-governance-integrity.result != 'success'
+        run: |
+          echo "::error::Regulatory governance integrity concluded '${{ needs.regulatory-governance-integrity.result }}'; Full DGR readiness cannot pass."
+          exit 1
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
