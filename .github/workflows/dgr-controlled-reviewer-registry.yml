@@ -9,12 +9,14 @@ on:
       - "docs/DGR_**"
       - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-controlled-reviewer-registry.mjs"
+      - "scripts/check-dgr-reviewer-qualification-evidence.mjs"
       - ".github/workflows/dgr-controlled-reviewer-registry.yml"
   pull_request:
     paths:
       - "docs/DGR_**"
       - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-controlled-reviewer-registry.mjs"
+      - "scripts/check-dgr-reviewer-qualification-evidence.mjs"
       - ".github/workflows/dgr-controlled-reviewer-registry.yml"
 
 permissions:
@@ -39,3 +41,9 @@ jobs:
 
       - name: Controlled reviewer-reference consistency gate
         run: node scripts/check-dgr-controlled-reviewer-registry.mjs
+
+      - name: Active reviewer qualification-evidence regression fixtures
+        run: node scripts/check-dgr-reviewer-qualification-evidence.mjs --test
+
+      - name: Active reviewer qualification-evidence consistency gate
+        run: node scripts/check-dgr-reviewer-qualification-evidence.mjs
