@@ -10,6 +10,7 @@ on:
       - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-controlled-reviewer-registry.mjs"
       - "scripts/check-dgr-reviewer-qualification-evidence.mjs"
+      - "scripts/check-dgr-reviewer-qualification-evidence-reference.mjs"
       - "scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs"
       - ".github/workflows/dgr-controlled-reviewer-registry.yml"
   pull_request:
@@ -18,6 +19,7 @@ on:
       - "docs/RECOVERED_STAGE2A_CONTEXT.md"
       - "scripts/check-dgr-controlled-reviewer-registry.mjs"
       - "scripts/check-dgr-reviewer-qualification-evidence.mjs"
+      - "scripts/check-dgr-reviewer-qualification-evidence-reference.mjs"
       - "scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs"
       - ".github/workflows/dgr-controlled-reviewer-registry.yml"
 
@@ -49,6 +51,12 @@ jobs:
 
       - name: Active reviewer qualification-evidence consistency gate
         run: node scripts/check-dgr-reviewer-qualification-evidence.mjs
+
+      - name: Reviewer qualification evidence-reference regression fixtures
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs --test
+
+      - name: Reviewer qualification evidence-reference consistency gate
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs
 
       - name: Reviewer bilingual evidence-reference regression fixtures
         run: node scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs --test
