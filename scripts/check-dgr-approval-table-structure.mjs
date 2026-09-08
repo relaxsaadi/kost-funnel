@@ -8,6 +8,10 @@
  * in between is a real Markdown separator, so a first data row can never be
  * mistaken for the separator and silently skipped.
  *
+ * It also prevents duplicate governance-sensitive header fields from creating
+ * ambiguous human-visible state while downstream semantic parsers consume only
+ * the first matching column.
+ *
  * This checker validates table structure only. It does not decide regulatory
  * correctness, verify Tier-A evidence, approve questions, or imply ANAC/IATA
  * approval.
@@ -18,6 +22,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
+const requiredApprovalHeaders = ["id", "fr status", "en status", "approval"];
 
 function normalize(value = "") {
   return String(value).replace(/[`*_]/g, " ").replace(/\s+/g, " ").trim();
@@ -34,9 +39,20 @@ function isMarkdownSeparator(line, expectedCells) {
   return expectedCells > 0 && row.length === expectedCells && row.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
+function normalizedHeaders(headers) {
+  return headers.map((value) => normalize(value).toLowerCase());
+}
+
 function isApprovalHeader(headers) {
-  const normalized = headers.map((value) => normalize(value).toLowerCase());
-  return ["id", "fr status", "en status", "approval"].every((required) => normalized.includes(required));
+  const normalized = normalizedHeaders(headers);
+  return requiredApprovalHeaders.every((required) => normalized.includes(required));
+}
+
+function duplicateGovernanceHeaders(headers) {
+  const normalized = normalizedHeaders(headers);
+  return requiredApprovalHeaders.filter(
+    (required) => normalized.filter((header) => header === required).length > 1,
+  );
 }
 
 function validateText(text, artifact) {
@@ -46,6 +62,14 @@ function validateText(text, artifact) {
   for (let i = 0; i < lines.length; i += 1) {
     const headers = cells(lines[i]);
     if (!headers.length || !isApprovalHeader(headers)) continue;
+
+    const duplicates = duplicateGovernanceHeaders(headers);
+    if (duplicates.length) {
+      errors.push(
+        `${artifact}: approval table header at line ${i + 1} contains duplicate governance column(s): ${duplicates.join(", ")}`,
+      );
+      continue;
+    }
 
     const separator = lines[i + 1] ?? "";
     if (!isMarkdownSeparator(separator, headers.length)) {
@@ -106,6 +130,24 @@ function fixtures() {
     "valid-approval-table",
     `| ID | FR status | EN status | Approval |\n|---|---|---|---|\n| Q-7.3-001 | DRAFT | BILINGUAL TECHNICAL REVIEW REQUIRED | PENDING REVIEWER + DATE |\n`,
     false,
+  );
+
+  expect(
+    "valid-approval-table-with-review-columns",
+    `| ID | FR status | EN status | Approval | Qualified reviewer | Review date |\n|---|---|---|---|---|---|\n| Q-7.3-001 | DRAFT | BILINGUAL TECHNICAL REVIEW REQUIRED | PENDING REVIEWER + DATE | — | — |\n`,
+    false,
+  );
+
+  expect(
+    "duplicate-approval-header",
+    `| ID | FR status | EN status | Approval | Approval |\n|---|---|---|---|---|\n| Q-7.3-001 | DRAFT | BILINGUAL TECHNICAL REVIEW REQUIRED | PENDING REVIEWER + DATE | APPROVED — Jane Doe, 2026-09-06 |\n`,
+    true,
+  );
+
+  expect(
+    "duplicate-fr-status-header",
+    `| ID | FR status | FR status | EN status | Approval |\n|---|---|---|---|---|\n| Q-7.3-001 | DRAFT | FROZEN FR / SOURCE VERIFIED | BILINGUAL TECHNICAL REVIEW REQUIRED | PENDING REVIEWER + DATE |\n`,
+    true,
   );
 
   expect(
