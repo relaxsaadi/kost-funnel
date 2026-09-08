@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import {
   hasConcreteLocator,
+  hasIataDgrSourceIdentity,
   isVerifiedFrState,
   validateTierAEvidenceForFrState,
 } from "./lib/dgr-matrix-tier-a-policy.mjs";
@@ -14,6 +15,12 @@ function errors(input) {
 assert.equal(isVerifiedFrState("FROZEN FR / SOURCE VERIFIED"), true);
 assert.equal(isVerifiedFrState("NOT YET VERIFIED"), false);
 assert.equal(isVerifiedFrState("SOURCE GAP"), false);
+assert.equal(hasIataDgrSourceIdentity("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
+assert.equal(hasIataDgrSourceIdentity("IATA Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)"), true);
+assert.equal(hasIataDgrSourceIdentity("DGR IATA 67th Edition 2026 § 5.0.1.2(c)"), true);
+assert.equal(hasIataDgrSourceIdentity("67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("IATA 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("DGR 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
@@ -45,6 +52,21 @@ assert.ok(
   "edition/year alone must not satisfy a verified FR row",
 );
 
+for (const tierAEvidence of [
+  "67th Edition 2026 § 5.0.1.2(c)",
+  "IATA 67th Edition 2026 § 5.0.1.2(c)",
+  "DGR 67th Edition 2026 § 5.0.1.2(c)",
+]) {
+  assert.ok(
+    errors({
+      tierAEvidence,
+      frState: "FROZEN FR / SOURCE VERIFIED",
+      frVerifier: "Qualified Reviewer — 2026-09-06",
+    }).some((error) => error.includes("explicit IATA DGR 67th Edition 2026 evidence identification")),
+    `${tierAEvidence} must not satisfy the current Tier-A source-identity gate`,
+  );
+}
+
 assert.deepEqual(
   errors({
     tierAEvidence: "IATA DGR 67th Edition 2026 § 5.0.1.2(c)",
@@ -52,7 +74,7 @@ assert.deepEqual(
     frVerifier: "Qualified Reviewer — 2026-09-06",
   }),
   [],
-  "current-edition direct locator + named verifier/date should pass syntax only",
+  "current-edition direct IATA DGR locator + named verifier/date should pass syntax only",
 );
 
 assert.deepEqual(
