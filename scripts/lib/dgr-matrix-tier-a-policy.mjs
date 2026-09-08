@@ -17,15 +17,14 @@ export function hasIataDgrSourceIdentity(value) {
     .replace(/[`*_]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (!/\bIATA\b/i.test(text)) return false;
 
-  // Deterministic provenance syntax only. The evidence cell must identify the
-  // current source itself as IATA DGR (or spell out Dangerous Goods
-  // Regulations) rather than relying on the matrix column title or nearby
-  // prose to imply the source family.
+  // Deterministic provenance syntax only. `DGR` is the repository's canonical
+  // shorthand for the IATA Dangerous Goods Regulations, so an explicit DGR
+  // token is sufficient source-family identification. If the title is spelled
+  // out instead, require the IATA name next to it so a generic "dangerous goods
+  // regulations" phrase cannot satisfy the gate by accident.
   return Boolean(
-    /\bIATA\b.{0,48}\bDGR\b/i.test(text) ||
-      /\bDGR\b.{0,48}\bIATA\b/i.test(text) ||
+    /\bDGR\b/i.test(text) ||
       /\bIATA\b.{0,48}\bDangerous\s+Goods\s+Regulations?\b/i.test(text) ||
       /\bDangerous\s+Goods\s+Regulations?\b.{0,48}\bIATA\b/i.test(text),
   );
