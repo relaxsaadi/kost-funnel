@@ -18,6 +18,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
+const canonicalOfficialTaskHeaders = ["function", "official task id", "cbta task-source reference"];
 let failed = false;
 
 function fail(message) {
@@ -156,6 +157,21 @@ function parseTaskTable(text, fn, artifactLabel, requireTaskSource) {
     const headers = markdownTableCells(lines[i]);
     if (!headers.length) continue;
     const normalized = headers.map(normalizedHeader);
+
+    if (requireTaskSource) {
+      const looksLikeCanonicalOfficialTaskHeader = canonicalOfficialTaskHeaders.every((header) => normalized.includes(header));
+      const isExactCanonicalOfficialTaskHeader =
+        normalized.length === canonicalOfficialTaskHeaders.length &&
+        normalized.every((header, index) => header === canonicalOfficialTaskHeaders[index]);
+
+      if (looksLikeCanonicalOfficialTaskHeader && !isExactCanonicalOfficialTaskHeader) {
+        fail(
+          `${artifactLabel}: canonical official-task header must be exactly Function | Official task ID | CBTA task-source reference, with each field exactly once and no extras`,
+        );
+        continue;
+      }
+    }
+
     const functionIndex = normalized.findIndex((header) => header === "function");
     const taskIndex = normalized.findIndex((header) => header === "official task id");
     const taskSourceIndex = normalized.findIndex((header) => header === "cbta task-source reference");

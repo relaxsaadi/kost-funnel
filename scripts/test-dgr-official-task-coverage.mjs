@@ -32,6 +32,16 @@ function officialTaskSet(fn, includeSeparator = true) {
   return `${lines.join("\n")}\n`;
 }
 
+function duplicateHeaderOfficialTaskSet(fn) {
+  return [
+    "| Function | Official task ID | CBTA task-source reference | Official task ID |",
+    "|---|---|---|---|",
+    `| ${fn} | ${taskId(fn, "A")} | synthetic-source-A | SYN-CONFLICT-A |`,
+    `| ${fn} | ${taskId(fn, "B")} | synthetic-source-B | SYN-CONFLICT-B |`,
+    "",
+  ].join("\n");
+}
+
 function matrix(fn, includeSeparator = true) {
   const lines = [
     "| Function | Official task ID |",
@@ -70,6 +80,7 @@ function assert(condition, message) {
 
 const validRoot = fs.mkdtempSync(path.join(os.tmpdir(), "dgr-task-coverage-valid-"));
 const malformedRoot = fs.mkdtempSync(path.join(os.tmpdir(), "dgr-task-coverage-malformed-"));
+const duplicateHeaderRoot = fs.mkdtempSync(path.join(os.tmpdir(), "dgr-task-coverage-duplicate-header-"));
 
 try {
   buildFixture(validRoot);
@@ -87,8 +98,21 @@ try {
     `malformed-separator failure should be explicit; stderr=${JSON.stringify(malformed.stderr)}`,
   );
 
+  buildFixture(duplicateHeaderRoot);
+  fs.writeFileSync(
+    path.join(duplicateHeaderRoot, "docs", "DGR_OFFICIAL_TASK_SET_7.2.md"),
+    duplicateHeaderOfficialTaskSet("7.2"),
+  );
+  const duplicateHeader = runChecker(duplicateHeaderRoot);
+  assert(duplicateHeader.status !== 0, "duplicate canonical official-task headers must fail closed");
+  assert(
+    duplicateHeader.stderr.includes("canonical official-task header must be exactly"),
+    `duplicate-header failure should be explicit; stderr=${JSON.stringify(duplicateHeader.stderr)}`,
+  );
+
   console.log("OFFICIAL TASK COVERAGE REGRESSION: PASS");
 } finally {
   fs.rmSync(validRoot, { recursive: true, force: true });
   fs.rmSync(malformedRoot, { recursive: true, force: true });
+  fs.rmSync(duplicateHeaderRoot, { recursive: true, force: true });
 }

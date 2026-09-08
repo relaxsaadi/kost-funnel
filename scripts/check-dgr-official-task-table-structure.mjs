@@ -10,6 +10,9 @@
  *
  * Invariants for each canonical official-task table:
  * - exactly one recognized table is present in the dedicated task-set artifact;
+ * - the recognized header contains exactly the canonical governance columns
+ *   `Function | Official task ID | CBTA task-source reference`, in that order,
+ *   with no duplicate or extra columns;
  * - the recognized header is immediately followed by a real Markdown
  *   separator row of the same width;
  * - every contiguous pipe-delimited data row preserves the header width.
@@ -24,6 +27,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
+const canonicalHeaders = ["function", "official task id", "cbta task-source reference"];
 let failed = false;
 
 function fail(message) {
@@ -52,10 +56,15 @@ function isCanonicalHeader(cells) {
   if (!cells?.length) return false;
   const headers = cells.map(normalized);
   return (
-    headers.includes("function") &&
-    headers.includes("official task id") &&
-    headers.includes("cbta task-source reference")
+    headers.length === canonicalHeaders.length &&
+    headers.every((header, index) => header === canonicalHeaders[index])
   );
+}
+
+function looksLikeCanonicalHeader(cells) {
+  if (!cells?.length) return false;
+  const headers = cells.map(normalized);
+  return canonicalHeaders.every((required) => headers.includes(required));
 }
 
 function isMarkdownSeparatorRow(cells, expectedWidth) {
@@ -69,6 +78,15 @@ function validateOfficialTaskTableStructure(text, label, report = fail) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const header = parseMarkdownCells(lines[i]);
+    if (!header) continue;
+
+    if (looksLikeCanonicalHeader(header) && !isCanonicalHeader(header)) {
+      report(
+        `${label}: official-task header at line ${i + 1} must be exactly Function | Official task ID | CBTA task-source reference, with each canonical column exactly once and no extras`,
+      );
+      continue;
+    }
+
     if (!isCanonicalHeader(header)) continue;
 
     tables += 1;
@@ -120,6 +138,36 @@ function runRegressionFixtures() {
   expectClean(
     "fixture valid",
     `# Canonical task set\n\n| Function | Official task ID | CBTA task-source reference |\n|---|---|---|\n| 7.2 | 0.1.1 | TABLEAU 7.2.A, p.23 |\n| 7.2 | 0.1.2 | TABLEAU 7.2.A, p.23 |`,
+  );
+
+  expectRejected(
+    "fixture duplicate Function header",
+    `# Canonical task set\n\n| Function | Official task ID | CBTA task-source reference | Function |\n|---|---|---|---|\n| 7.2 | 0.1.1 | TABLEAU 7.2.A, p.23 | 7.9 |`,
+    "must be exactly Function | Official task ID | CBTA task-source reference",
+  );
+
+  expectRejected(
+    "fixture duplicate task ID header",
+    `# Canonical task set\n\n| Function | Official task ID | CBTA task-source reference | Official task ID |\n|---|---|---|---|\n| 7.2 | 0.1.1 | TABLEAU 7.2.A, p.23 | 9.9.9 |`,
+    "must be exactly Function | Official task ID | CBTA task-source reference",
+  );
+
+  expectRejected(
+    "fixture duplicate task-source header",
+    `# Canonical task set\n\n| Function | Official task ID | CBTA task-source reference | CBTA task-source reference |\n|---|---|---|---|\n| 7.2 | 0.1.1 | TABLEAU 7.2.A, p.23 | conflicting source |`,
+    "must be exactly Function | Official task ID | CBTA task-source reference",
+  );
+
+  expectRejected(
+    "fixture extra header",
+    `# Canonical task set\n\n| Function | Official task ID | CBTA task-source reference | Notes |\n|---|---|---|---|\n| 7.2 | 0.1.1 | TABLEAU 7.2.A, p.23 | unexpected |`,
+    "must be exactly Function | Official task ID | CBTA task-source reference",
+  );
+
+  expectRejected(
+    "fixture reordered header",
+    `# Canonical task set\n\n| Official task ID | Function | CBTA task-source reference |\n|---|---|---|\n| 0.1.1 | 7.2 | TABLEAU 7.2.A, p.23 |`,
+    "must be exactly Function | Official task ID | CBTA task-source reference",
   );
 
   expectRejected(
