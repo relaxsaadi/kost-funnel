@@ -144,8 +144,20 @@ function cells(line) {
   return text.slice(1, -1).split("|").map((cell) => cell.trim());
 }
 
-function headerIndex(headers, label) {
-  return headers.map((h) => normalize(h).toLowerCase()).indexOf(label.toLowerCase());
+function normalizedHeaders(headers) {
+  return headers.map((header) => normalize(header).toLowerCase());
+}
+
+function headerMatches(headers, label) {
+  const expected = label.toLowerCase();
+  return normalizedHeaders(headers)
+    .map((header, index) => (header === expected ? index : -1))
+    .filter((index) => index >= 0);
+}
+
+function isMarkdownSeparatorRow(line, expectedCells) {
+  const row = cells(line);
+  return expectedCells > 0 && row.length === expectedCells && row.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")));
 }
 
 function validateMatrixText(text, artifact) {
@@ -153,22 +165,54 @@ function validateMatrixText(text, artifact) {
   const lines = text.split(/\r?\n/);
   let found = false;
 
+  const semanticHeaders = {
+    task: "Official task ID",
+    frState: "FR source-verification state",
+    frVerifier: "FR verifier + date",
+    enState: "EN bilingual-review state",
+    enReviewer: "EN reviewer + date",
+  };
+
   for (let i = 0; i < lines.length; i += 1) {
     const headers = cells(lines[i]);
     if (!headers.length) continue;
-    const indexes = {
-      task: headerIndex(headers, "Official task ID"),
-      frState: headerIndex(headers, "FR source-verification state"),
-      frVerifier: headerIndex(headers, "FR verifier + date"),
-      enState: headerIndex(headers, "EN bilingual-review state"),
-      enReviewer: headerIndex(headers, "EN reviewer + date"),
-    };
-    if (Object.values(indexes).some((index) => index < 0)) continue;
+
+    const matches = Object.fromEntries(
+      Object.entries(semanticHeaders).map(([key, label]) => [key, headerMatches(headers, label)]),
+    );
+    if (Object.values(matches).some((indexes) => indexes.length === 0)) continue;
+
+    if (found) {
+      errors.push(`${artifact}: more than one matrix review-evidence table found`);
+      continue;
+    }
     found = true;
+
+    const ambiguous = Object.entries(matches).filter(([, indexes]) => indexes.length !== 1);
+    if (ambiguous.length) {
+      for (const [key, indexes] of ambiguous) {
+        errors.push(`${artifact}: matrix header at line ${i + 1} contains ${indexes.length} occurrences of governance field "${semanticHeaders[key]}"; exactly one is required`);
+      }
+      continue;
+    }
+
+    const indexes = Object.fromEntries(
+      Object.entries(matches).map(([key, values]) => [key, values[0]]),
+    );
+
+    if (!isMarkdownSeparatorRow(lines[i + 1] ?? "", headers.length)) {
+      errors.push(`${artifact}: matrix header at line ${i + 1} is not followed by a valid same-width Markdown separator row`);
+      continue;
+    }
 
     for (let j = i + 2; j < lines.length; j += 1) {
       const row = cells(lines[j]);
       if (!row.length) break;
+      if (row.length !== headers.length) {
+        errors.push(`${artifact}: matrix row ${j + 1} has ${row.length} cell(s), expected ${headers.length}`);
+        continue;
+      }
+
       const task = normalize(row[indexes.task] ?? "") || `row ${j + 1}`;
       const frState = row[indexes.frState] ?? "";
       const frVerifier = row[indexes.frVerifier] ?? "";
@@ -313,6 +357,26 @@ function fixtures() {
 
   const noBilingualMatrix = validMatrix.replace("Bilingual DGR Reviewer", "DGR Reviewer");
   if (!validateMatrixText(noBilingualMatrix, "no-bilingual-matrix.md").length) throw new Error("EN DGR-only credential was accepted without bilingual evidence");
+
+  const duplicateFrStateMatrix = `| Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date | FR source-verification state |\n|---|---|---|---|---|---|\n| 0.1.1 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending | FROZEN FR / SOURCE VERIFIED |\n`;
+  if (!validateMatrixText(duplicateFrStateMatrix, "duplicate-fr-state-header.md").length) {
+    throw new Error("duplicate FR source-verification header was accepted");
+  }
+
+  const duplicateTaskMatrix = `| Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date | Official task ID |\n|---|---|---|---|---|---|\n| 0.1.1 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending | 9.9.9 |\n`;
+  if (!validateMatrixText(duplicateTaskMatrix, "duplicate-task-header.md").length) {
+    throw new Error("duplicate Official task ID header was accepted");
+  }
+
+  const firstTaskAsSeparator = `| Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date |\n| 0.1.1 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending |\n| 0.1.2 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending |\n`;
+  if (!validateMatrixText(firstTaskAsSeparator, "first-task-as-separator.md").length) {
+    throw new Error("first matrix task row was accepted as Markdown separator");
+  }
+
+  const wideRowMatrix = `| Official task ID | FR source-verification state | FR verifier + date | EN bilingual-review state | EN reviewer + date |\n|---|---|---|---|---|\n| 0.1.1 | DRAFT / NOT YET VERIFIED | pending | BILINGUAL TECHNICAL REVIEW REQUIRED | pending | shadow |\n`;
+  if (!validateMatrixText(wideRowMatrix, "wide-row.md").length) {
+    throw new Error("wide matrix row was accepted by review-evidence semantics parser");
+  }
 
   console.log("DGR review-evidence semantics regression fixtures: PASS");
 }
