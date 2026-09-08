@@ -3,6 +3,8 @@
 import assert from "node:assert/strict";
 import {
   hasConcreteLocator,
+  hasCurrentEdition2026,
+  hasCurrentEdition2026WithConcreteLocator,
   hasIataDgrSourceIdentity,
   isVerifiedFrState,
   validateTierAEvidenceForFrState,
@@ -24,6 +26,29 @@ assert.equal(hasIataDgrSourceIdentity("Dangerous Goods Regulations 67th Edition 
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
+
+assert.equal(
+  hasCurrentEdition2026("DGR 66th Edition 2025 §1.1; internal reference 67th Edition 2026 §2.2"),
+  false,
+  "an older DGR source and a separate current local source must not synthesize current DGR identity",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026; internal reference §2.2"),
+  false,
+  "a locator in another source segment must not satisfy current DGR direct-evidence syntax",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026 §1.1; internal cross-reference p.2"),
+  true,
+  "canonical current DGR identity and locator in the same source segment must remain valid",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator(
+    "DGR 66th Edition 2025 §1.1; IATA Dangerous Goods Regulations 67th Edition 2026 Table 2.3.A",
+  ),
+  true,
+  "a separate segment that itself identifies current IATA DGR and a locator must remain valid",
+);
 
 assert.ok(
   errors({
@@ -67,6 +92,24 @@ for (const tierAEvidence of [
   );
 }
 
+assert.ok(
+  errors({
+    tierAEvidence: "DGR 66th Edition 2025 §1.1; internal reference 67th Edition 2026 §2.2",
+    frState: "FROZEN FR / SOURCE VERIFIED",
+    frVerifier: "Qualified Reviewer — 2026-09-06",
+  }).some((error) => error.includes("explicit IATA DGR 67th Edition 2026 evidence identification")),
+  "mixed old-DGR/current-local evidence must fail instead of combining whole-cell tokens",
+);
+
+assert.ok(
+  errors({
+    tierAEvidence: "DGR 67th Edition 2026; internal reference §2.2",
+    frState: "FROZEN FR / SOURCE VERIFIED",
+    frVerifier: "Qualified Reviewer — 2026-09-06",
+  }).some((error) => error.includes("bound to the same current DGR source segment")),
+  "a locator from another source segment must not satisfy direct current DGR evidence",
+);
+
 assert.deepEqual(
   errors({
     tierAEvidence: "DGR 67th Edition 2026 § 5.0.1.2(c)",
@@ -75,6 +118,16 @@ assert.deepEqual(
   }),
   [],
   "canonical DGR shorthand + current edition + direct locator + named verifier/date should pass syntax only",
+);
+
+assert.deepEqual(
+  errors({
+    tierAEvidence: "DGR 67th Edition 2026 §1.1; internal cross-reference p.2",
+    frState: "FROZEN FR / SOURCE VERIFIED",
+    frVerifier: "Qualified Reviewer — 2026-09-06",
+  }),
+  [],
+  "secondary source notes must remain allowed when current DGR identity and locator are already bound",
 );
 
 assert.deepEqual(
