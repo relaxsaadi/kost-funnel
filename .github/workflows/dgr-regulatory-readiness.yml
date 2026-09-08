@@ -113,6 +113,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-matrix-table-structure.mjs
 
+      - name: Controlled reviewer registry regression fixtures
+        if: always()
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs --test
+
+      - name: Controlled reviewer registry consistency gate
+        if: always()
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs
+
       - name: Reviewer identity-evidence regression fixtures
         if: always()
         run: node scripts/check-dgr-reviewer-identity-evidence.mjs --test
