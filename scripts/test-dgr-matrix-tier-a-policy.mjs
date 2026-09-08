@@ -16,11 +16,11 @@ assert.equal(isVerifiedFrState("FROZEN FR / SOURCE VERIFIED"), true);
 assert.equal(isVerifiedFrState("NOT YET VERIFIED"), false);
 assert.equal(isVerifiedFrState("SOURCE GAP"), false);
 assert.equal(hasIataDgrSourceIdentity("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
+assert.equal(hasIataDgrSourceIdentity("DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasIataDgrSourceIdentity("IATA Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)"), true);
-assert.equal(hasIataDgrSourceIdentity("DGR IATA 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasIataDgrSourceIdentity("67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasIataDgrSourceIdentity("IATA 67th Edition 2026 § 5.0.1.2(c)"), false);
-assert.equal(hasIataDgrSourceIdentity("DGR 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
@@ -55,7 +55,7 @@ assert.ok(
 for (const tierAEvidence of [
   "67th Edition 2026 § 5.0.1.2(c)",
   "IATA 67th Edition 2026 § 5.0.1.2(c)",
-  "DGR 67th Edition 2026 § 5.0.1.2(c)",
+  "Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)",
 ]) {
   assert.ok(
     errors({
@@ -69,12 +69,12 @@ for (const tierAEvidence of [
 
 assert.deepEqual(
   errors({
-    tierAEvidence: "IATA DGR 67th Edition 2026 § 5.0.1.2(c)",
+    tierAEvidence: "DGR 67th Edition 2026 § 5.0.1.2(c)",
     frState: "FROZEN FR / SOURCE VERIFIED",
     frVerifier: "Qualified Reviewer — 2026-09-06",
   }),
   [],
-  "current-edition direct IATA DGR locator + named verifier/date should pass syntax only",
+  "canonical DGR shorthand + current edition + direct locator + named verifier/date should pass syntax only",
 );
 
 assert.deepEqual(
