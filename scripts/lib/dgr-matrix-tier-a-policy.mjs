@@ -30,10 +30,27 @@ export function hasIataDgrSourceIdentity(value) {
   );
 }
 
-export function hasCurrentEdition2026(value) {
+function hasEdition67(value) {
   const text = String(value ?? "");
-  const hasEdition = /\b67(?:th|e|ème|eme)\b|67th edition|67e édition/i.test(text);
-  return hasIataDgrSourceIdentity(text) && hasEdition && /\b2026\b/.test(text);
+  return /\b67(?:th|e|ème|eme)\b|67th edition|67e édition/i.test(text);
+}
+
+function sourceSegments(value) {
+  return String(value ?? "")
+    .replace(/[`*_]/g, " ")
+    .split(/(?:\r?\n|;|\|)/)
+    .map((segment) => segment.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+export function hasCurrentEdition2026(value) {
+  // Bind source identity + edition + year to one source segment. Whole-cell
+  // co-occurrence is insufficient because an older DGR citation and a separate
+  // local/current reference must not combine into synthetic current Tier-A
+  // provenance.
+  return sourceSegments(value).some(
+    (segment) => hasIataDgrSourceIdentity(segment) && hasEdition67(segment) && /\b2026\b/.test(segment),
+  );
 }
 
 export function hasConcreteLocator(value) {
@@ -46,6 +63,19 @@ export function hasConcreteLocator(value) {
     /§{1,2}\s*\d+(?:\.\d+)*(?:\([a-z0-9]+\))*/i.test(text) ||
       /\b(?:section|subsection|paragraph|para\.?|table|figure|fig\.?|appendix|attachment|page|p\.)\s*(?:[a-z]?\d[\w.-]*|[a-z])\b/i.test(text) ||
       /\b[1-9]\d?(?:\.\d+){1,5}(?:\([a-z0-9]+\))*/i.test(text),
+  );
+}
+
+export function hasCurrentEdition2026WithConcreteLocator(value) {
+  // The concrete locator must belong to the same source segment that identifies
+  // IATA DGR 67th Edition 2026. A locator from a separate local/legacy source
+  // cannot be borrowed to satisfy the direct Tier-A evidence gate.
+  return sourceSegments(value).some(
+    (segment) =>
+      hasIataDgrSourceIdentity(segment) &&
+      hasEdition67(segment) &&
+      /\b2026\b/.test(segment) &&
+      hasConcreteLocator(segment),
   );
 }
 
@@ -90,8 +120,8 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
     if (!hasCurrentEdition2026(evidence)) {
       errors.push("FR verified state lacks explicit IATA DGR 67th Edition 2026 evidence identification");
     }
-    if (!hasConcreteLocator(evidence)) {
-      errors.push("FR verified state lacks a concrete section/table/page locator");
+    if (hasCurrentEdition2026(evidence) && !hasCurrentEdition2026WithConcreteLocator(evidence)) {
+      errors.push("FR verified state lacks a concrete section/table/page locator bound to the same current DGR source segment");
     }
     if (!reviewerAndDateLooksComplete(frVerifier)) {
       errors.push("FR verified state lacks a named verifier + ISO review date");
@@ -110,8 +140,8 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
   if (!hasCurrentEdition2026(evidence)) {
     errors.push("Tier-A evidence is neither an explicit non-verified state nor identified as IATA DGR 67th Edition 2026");
   }
-  if (hasCurrentEdition2026(evidence) && !hasConcreteLocator(evidence)) {
-    errors.push("current-edition Tier-A evidence lacks a concrete section/table/page locator");
+  if (hasCurrentEdition2026(evidence) && !hasCurrentEdition2026WithConcreteLocator(evidence)) {
+    errors.push("current-edition Tier-A evidence lacks a concrete section/table/page locator bound to the same current DGR source segment");
   }
 
   return errors;
