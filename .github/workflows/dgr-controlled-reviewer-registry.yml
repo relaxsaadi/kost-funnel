@@ -1,0 +1,41 @@
+name: DGR controlled reviewer admission
+
+on:
+  push:
+    branches:
+      - main
+      - ai/dgr-stage2b-handoff
+    paths:
+      - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
+      - "scripts/check-dgr-controlled-reviewer-registry.mjs"
+      - ".github/workflows/dgr-controlled-reviewer-registry.yml"
+  pull_request:
+    paths:
+      - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
+      - "scripts/check-dgr-controlled-reviewer-registry.mjs"
+      - ".github/workflows/dgr-controlled-reviewer-registry.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-reviewer-registry:
+    name: Controlled reviewer registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Controlled reviewer-reference regression fixtures
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs --test
+
+      - name: Controlled reviewer-reference consistency gate
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs
