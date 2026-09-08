@@ -12,10 +12,29 @@ export function isVerifiedFrState(value) {
   return /FROZEN|SOURCE VERIFIED|\bVERIFIED\b/i.test(text);
 }
 
+export function hasIataDgrSourceIdentity(value) {
+  const text = String(value ?? "")
+    .replace(/[`*_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/\bIATA\b/i.test(text)) return false;
+
+  // Deterministic provenance syntax only. The evidence cell must identify the
+  // current source itself as IATA DGR (or spell out Dangerous Goods
+  // Regulations) rather than relying on the matrix column title or nearby
+  // prose to imply the source family.
+  return Boolean(
+    /\bIATA\b.{0,48}\bDGR\b/i.test(text) ||
+      /\bDGR\b.{0,48}\bIATA\b/i.test(text) ||
+      /\bIATA\b.{0,48}\bDangerous\s+Goods\s+Regulations?\b/i.test(text) ||
+      /\bDangerous\s+Goods\s+Regulations?\b.{0,48}\bIATA\b/i.test(text),
+  );
+}
+
 export function hasCurrentEdition2026(value) {
   const text = String(value ?? "");
   const hasEdition = /\b67(?:th|e|ème|eme)\b|67th edition|67e édition/i.test(text);
-  return hasEdition && /\b2026\b/.test(text);
+  return hasIataDgrSourceIdentity(text) && hasEdition && /\b2026\b/.test(text);
 }
 
 export function hasConcreteLocator(value) {
