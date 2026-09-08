@@ -11,6 +11,8 @@
  * - Functions 7.1 through 7.10 each have their own dedicated Stage 2A
  *   blueprint artifact;
  * - each blueprint identifies its own function;
+ * - every recognized blueprint task table contains exactly one task-identifier
+ *   header alias, in the first column;
  * - every canonical official task ID from that function's dedicated official
  *   task-set artifact is represented in an actual blueprint task table;
  * - blueprint task tables contain no duplicate or foreign task IDs.
@@ -30,7 +32,7 @@ import path from "node:path";
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
 const taskIdRe = /\b\d+(?:\.\d+){1,2}\b/g;
-const taskTableHeaders = new Set(["id", "official task", "task id", "sub-task id", "subtask id"]);
+const taskIdHeaderAliases = new Set(["id", "official task", "task id", "sub-task id", "subtask id"]);
 
 let failed = false;
 
@@ -67,6 +69,10 @@ function parseMarkdownCells(line) {
   return body.split("|").map((cell) => cleanCell(cell));
 }
 
+function taskIdHeaderCount(cells) {
+  return cells.filter((cell) => taskIdHeaderAliases.has(cell.toLowerCase())).length;
+}
+
 function officialTaskIds(text, fn, label, report = fail) {
   const ids = [];
   for (const line of text.split(/\r?\n/)) {
@@ -88,8 +94,10 @@ function officialTaskIds(text, fn, label, report = fail) {
 function blueprintTaskIds(text, label, report = fail) {
   const ids = [];
   let inTaskTable = false;
+  let lineNumber = 0;
 
   for (const line of text.split(/\r?\n/)) {
+    lineNumber += 1;
     const cells = parseMarkdownCells(line);
     if (!cells) {
       inTaskTable = false;
@@ -100,7 +108,17 @@ function blueprintTaskIds(text, label, report = fail) {
     const lower = firstCell.toLowerCase();
 
     if (!inTaskTable) {
-      if (taskTableHeaders.has(lower)) inTaskTable = true;
+      if (taskIdHeaderAliases.has(lower)) {
+        const identifierColumns = taskIdHeaderCount(cells);
+        if (identifierColumns !== 1) {
+          report(
+            `${label}: task-table header at line ${lineNumber} has ${identifierColumns} task-identifier header columns; expected exactly one in the first column`,
+          );
+          inTaskTable = false;
+        } else {
+          inTaskTable = true;
+        }
+      }
       continue;
     }
 
@@ -138,6 +156,13 @@ function structuralCoverageErrors(taskIds, blueprintIds, label) {
 function runRegressionFixtures() {
   const fixtureErrors = [];
   const collect = (message) => fixtureErrors.push(message);
+  const expectHeaderRejected = (name, text) => {
+    const observed = [];
+    blueprintTaskIds(text, name, (message) => observed.push(message));
+    if (!observed.some((message) => message.includes("task-identifier header columns; expected exactly one"))) {
+      collect(`${name}: ambiguous task-identifier header was not rejected`);
+    }
+  };
 
   const official = `| Function | Task | Wording |\n|---|---|---|\n| 7.9 | 0.1.1 | A |\n| 7.9 | 0.1.2 | B |`;
   const officialIds = officialTaskIds(official, "7.9", "fixture official", collect);
@@ -155,6 +180,23 @@ function runRegressionFixtures() {
   const combinedIds = blueprintTaskIds(combinedBlueprint, "fixture combined", collect);
   const combinedErrors = structuralCoverageErrors(combinedOfficialIds, combinedIds, "fixture combined");
   if (combinedErrors.length) collect(`fixture combined: intentional combined row rejected: ${combinedErrors.join("; ")}`);
+
+  const alternateAliasBlueprint = `# Function 7.9\n\n| Official task | Sub-task |\n|---|---|\n| 0.1.1 | A |\n| 0.1.2 | B |`;
+  const alternateAliasIds = blueprintTaskIds(alternateAliasBlueprint, "fixture alternate alias", collect);
+  const alternateAliasErrors = structuralCoverageErrors(officialIds, alternateAliasIds, "fixture alternate alias");
+  if (alternateAliasErrors.length) {
+    collect(`fixture alternate alias: valid alternate identifier alias rejected: ${alternateAliasErrors.join("; ")}`);
+  }
+
+  expectHeaderRejected(
+    "fixture duplicate exact identifier header",
+    `# Function 7.9\n\n| ID | ID | Sub-task |\n|---|---|---|\n| 0.1.1 | 9.9.9 | A |`,
+  );
+
+  expectHeaderRejected(
+    "fixture duplicate mixed identifier aliases",
+    `# Function 7.9\n\n| ID | Task ID | Sub-task |\n|---|---|---|\n| 0.1.1 | 9.9.9 | A |`,
+  );
 
   const foreignBlueprint = `# Function 7.9\n\n| ID | Sub-task |\n|---|---|\n| 0.1.1 | A |\n| 0.1.2 | B |\n| 9.9.9 | Foreign copied row |`;
   const foreignIds = blueprintTaskIds(foreignBlueprint, "fixture foreign", collect);
