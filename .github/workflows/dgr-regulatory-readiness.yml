@@ -129,6 +129,14 @@ jobs:
         if: always()
         run: node scripts/check-dgr-reviewer-qualification-evidence.mjs
 
+      - name: Reviewer qualification evidence-reference regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs --test
+
+      - name: Reviewer qualification evidence-reference consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs
+
       - name: Reviewer bilingual evidence-reference regression fixtures
         if: always()
         run: node scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs --test
