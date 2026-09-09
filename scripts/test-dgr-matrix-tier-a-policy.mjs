@@ -30,6 +30,12 @@ assert.equal(hasIataDgrSourceIdentity("Local DGR Guide 67th Edition 2026 § 5.0.
 assert.equal(hasIataDgrSourceIdentity("ICAO DGR Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 5.0.1.2(c)"), true);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 1.1"), true);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 v1.0"), false);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 version 2.3"), false);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 rev. 3.1"), false);
+assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 revision: 4.2"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
 assert.equal(hasNonDirectItemEvidence("Representative sample of this citation pattern was checked"), true);
 assert.equal(hasNonDirectItemEvidence("This item's own specific citation was not independently re-read this pass"), true);
@@ -64,6 +70,16 @@ assert.equal(
   hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026; internal reference §2.2"),
   false,
   "a locator in another source segment must not satisfy current DGR direct-evidence syntax",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026 rev 1.0"),
+  false,
+  "a revision number must not masquerade as a concrete current-DGR locator",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026 1.1"),
+  true,
+  "a legitimate bare dotted DGR section reference must remain valid",
 );
 assert.equal(
   hasCurrentEdition2026WithConcreteLocator("DGR 67th Edition 2026 §1.1; internal cross-reference p.2"),
@@ -168,6 +184,22 @@ assert.ok(
 );
 
 for (const tierAEvidence of [
+  "IATA DGR 67th Edition 2026 v1.0",
+  "IATA DGR 67th Edition 2026 version 2.3",
+  "IATA DGR 67th Edition 2026 rev. 3.1",
+  "IATA DGR 67th Edition 2026 revision: 4.2",
+]) {
+  assert.ok(
+    errors({
+      tierAEvidence,
+      frState: "FROZEN FR / SOURCE VERIFIED",
+      frVerifier: "Qualified Reviewer — 2026-09-06",
+    }).some((error) => error.includes("concrete section/table/page locator")),
+    `${tierAEvidence} must not satisfy the concrete locator gate`,
+  );
+}
+
+for (const tierAEvidence of [
   "67th Edition 2026 § 5.0.1.2(c)",
   "IATA 67th Edition 2026 § 5.0.1.2(c)",
   "Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)",
@@ -210,6 +242,16 @@ assert.deepEqual(
   }),
   [],
   "canonical DGR shorthand + current edition + direct locator + named verifier/date should pass syntax only",
+);
+
+assert.deepEqual(
+  errors({
+    tierAEvidence: "DGR 67th Edition 2026 1.1",
+    frState: "FROZEN FR / SOURCE VERIFIED",
+    frVerifier: "Qualified Reviewer — 2026-09-06",
+  }),
+  [],
+  "canonical DGR shorthand + legitimate bare dotted section locator must remain valid",
 );
 
 assert.deepEqual(
