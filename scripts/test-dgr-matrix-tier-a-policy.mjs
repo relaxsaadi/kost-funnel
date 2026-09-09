@@ -37,8 +37,13 @@ assert.equal(hasNonDirectItemEvidence("Citation was used as-is and follows the s
 assert.equal(hasNonDirectItemEvidence("Exact item-specific current-text re-read still needs durable provenance"), true);
 assert.equal(hasNonDirectItemEvidence("This locator is not item-specific"), true);
 assert.equal(hasNonDirectItemEvidence("Item-specific evidence is still required"), true);
+assert.equal(hasNonDirectItemEvidence("Échantillon représentatif seulement"), true);
+assert.equal(hasNonDirectItemEvidence("Citation non relue indépendamment"), true);
+assert.equal(hasNonDirectItemEvidence("Preuve non spécifique à l'item"), true);
+assert.equal(hasNonDirectItemEvidence("Provenance spécifique à l'item reste à confirmer"), true);
 assert.equal(hasNonDirectItemEvidence("Direct item verification against IATA DGR 67th Edition 2026 §1.1"), false);
 assert.equal(hasNonDirectItemEvidence("Direct item-specific verification completed against IATA DGR 67th Edition 2026 §1.1"), false);
+assert.equal(hasNonDirectItemEvidence("Vérification spécifique à l'item terminée contre IATA DGR 67e édition 2026 §1.1"), false);
 
 assert.equal(
   hasCurrentEdition2026("DGR 66th Edition 2025 §1.1; internal reference 67th Edition 2026 §2.2"),
@@ -98,6 +103,10 @@ for (const tierAEvidence of [
   "IATA DGR 67th Edition 2026 §1.2.4(b) — exact item-specific current-text re-read still needs durable provenance",
   "IATA DGR 67th Edition 2026 §1.1 — this locator is not item-specific",
   "IATA DGR 67th Edition 2026 §1.1 — item-specific evidence is still required",
+  "IATA DGR 67e édition 2026 §1.1 — échantillon représentatif seulement",
+  "IATA DGR 67e édition 2026 §1.1 — citation non relue indépendamment",
+  "IATA DGR 67e édition 2026 §1.1 — preuve non spécifique à l'item",
+  "IATA DGR 67e édition 2026 §1.1 — provenance spécifique à l'item reste à confirmer",
 ]) {
   assert.ok(
     errors({
@@ -127,6 +136,16 @@ assert.deepEqual(
   }),
   [],
   "a truthful non-terminal FR state may retain unresolved item-specific provenance wording as a reconciliation lead",
+);
+
+assert.deepEqual(
+  errors({
+    tierAEvidence: "IATA DGR 67e édition 2026 §1.1 — provenance spécifique à l'item reste à confirmer",
+    frState: "DRAFT / NOT YET VERIFIED",
+    frVerifier: "",
+  }),
+  [],
+  "a truthful non-terminal FR state may retain French unresolved item-specific provenance wording as a reconciliation lead",
 );
 
 assert.deepEqual(
