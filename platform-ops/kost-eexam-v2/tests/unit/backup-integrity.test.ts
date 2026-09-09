@@ -7,6 +7,7 @@ import { describe, test } from "node:test";
 import {
   artifactNameFromDetail,
   assertRecordedSha256,
+  assertRecordedSize,
   verifyBackupArtifact,
 } from "../../lib/backup-integrity";
 
@@ -32,6 +33,7 @@ describe("Intégrité et provenance des artefacts de sauvegarde", () => {
       const verified = verifyBackupArtifact(path);
       assert.match(verified.sha256, /^[0-9a-f]{64}$/);
       assert.ok(verified.sizeBytes > 0);
+      assert.doesNotThrow(() => assertRecordedSize(verified.sizeBytes, verified.sizeBytes));
       assert.doesNotThrow(() => assertRecordedSha256(verified.sha256, verified.sha256));
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -87,5 +89,14 @@ describe("Intégrité et provenance des artefacts de sauvegarde", () => {
     assert.throws(() => assertRecordedSha256(actual, "abc"));
     assert.throws(() => assertRecordedSha256(actual, "b".repeat(64)));
     assert.doesNotThrow(() => assertRecordedSha256(actual, "A".repeat(64)));
+  });
+
+  test("refuse une taille enregistrée absente, invalide ou différente", () => {
+    assert.throws(() => assertRecordedSize(4096, null));
+    assert.throws(() => assertRecordedSize(4096, 0));
+    assert.throws(() => assertRecordedSize(4096, -1));
+    assert.throws(() => assertRecordedSize(4096, 4096.5));
+    assert.throws(() => assertRecordedSize(4096, 8192));
+    assert.doesNotThrow(() => assertRecordedSize(4096, 4096));
   });
 });
