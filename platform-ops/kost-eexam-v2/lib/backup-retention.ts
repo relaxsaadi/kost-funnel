@@ -30,7 +30,15 @@ export function parseBackupFilename(name: string): BackupCandidate | null {
   const match = BACKUP_NAME_RE.exec(name);
   if (!match) return null;
 
-  const [, dayKey, hour, minute, second, millisecond] = match;
+  // Avec noUncheckedIndexedAccess, les groupes RegExp indexés restent typés
+  // `string | undefined` même après un match réussi. La regex impose pourtant
+  // exactement ces cinq groupes capturants ; les assertions rendent cet
+  // invariant explicite sans affaiblir la validation runtime ci-dessous.
+  const dayKey = match[1]!;
+  const hour = match[2]!;
+  const minute = match[3]!;
+  const second = match[4]!;
+  const millisecond = match[5]!;
   const canonicalTimestamp = `${dayKey}T${hour}:${minute}:${second}.${millisecond}Z`;
   const parsed = Date.parse(canonicalTimestamp);
   if (!Number.isFinite(parsed)) return null;
