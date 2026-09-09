@@ -1,0 +1,250 @@
+name: DGR regulatory readiness
+
+on:
+  push:
+    branches:
+      - main
+      - ai/dgr-stage2b-handoff
+    paths:
+      - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
+      - "scripts/check-dgr-**"
+      - "scripts/test-dgr-**"
+      - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
+      - ".github/workflows/dgr-regulatory-readiness.yml"
+  pull_request:
+    paths:
+      - "docs/DGR_**"
+      - "docs/RECOVERED_STAGE2A_CONTEXT.md"
+      - "scripts/check-dgr-**"
+      - "scripts/test-dgr-**"
+      - "scripts/lib/dgr-matrix-tier-a-policy.mjs"
+      - ".github/workflows/dgr-regulatory-readiness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  regulatory-governance-integrity:
+    name: Regulatory governance integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tier-A matrix policy regression fixtures
+        run: node scripts/test-dgr-matrix-tier-a-policy.mjs
+
+      - name: Official-task coverage regression fixtures
+        if: always()
+        run: node scripts/test-dgr-official-task-coverage.mjs
+
+      - name: Official-task table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-official-task-table-structure.mjs --test
+
+      - name: Official-task table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-official-task-table-structure.mjs
+
+      - name: Official-task source-locator regression fixtures
+        if: always()
+        run: node scripts/check-dgr-task-source-locators.mjs --test
+
+      - name: Official-task source-locator consistency gate
+        if: always()
+        run: node scripts/check-dgr-task-source-locators.mjs
+
+      - name: Function 7.1 bank-ID structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-stage71-question-id-structure.mjs --test
+
+      - name: Function 7.1 bank-ID structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-stage71-question-id-structure.mjs
+
+      - name: All-function question-heading binding regression fixtures
+        if: always()
+        run: node scripts/check-dgr-question-heading-function-binding.mjs --test
+
+      - name: All-function question-heading binding consistency gate
+        if: always()
+        run: node scripts/check-dgr-question-heading-function-binding.mjs
+
+      - name: Stage 2A blueprint coverage regression fixtures
+        if: always()
+        run: node scripts/check-dgr-blueprint-coverage.mjs --test
+
+      - name: Stage 2A per-function blueprint coverage gate
+        if: always()
+        run: node scripts/check-dgr-blueprint-coverage.mjs
+
+      - name: Stage 2A blueprint-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-blueprint-table-structure.mjs --test
+
+      - name: Stage 2A blueprint-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-blueprint-table-structure.mjs
+
+      - name: Review-state semantic regression fixtures
+        if: always()
+        run: node scripts/check-dgr-readiness-artifacts.mjs --test-review-state-policy
+
+      - name: Matrix review-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-matrix-review-evidence.mjs --test
+
+      - name: Matrix review-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-matrix-review-evidence.mjs
+
+      - name: Matrix-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-matrix-table-structure.mjs --test
+
+      - name: Matrix-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-matrix-table-structure.mjs
+
+      - name: Controlled reviewer registry regression fixtures
+        if: always()
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs --test
+
+      - name: Controlled reviewer registry consistency gate
+        if: always()
+        run: node scripts/check-dgr-controlled-reviewer-registry.mjs
+
+      - name: Reviewer admission chronology regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-admission-chronology.mjs --test
+
+      - name: Reviewer admission chronology consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-admission-chronology.mjs
+
+      - name: Active reviewer qualification-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence.mjs --test
+
+      - name: Active reviewer qualification-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence.mjs
+
+      - name: Reviewer qualification evidence-reference regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs --test
+
+      - name: Reviewer qualification evidence-reference consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-qualification-evidence-reference.mjs
+
+      - name: Reviewer bilingual evidence-reference regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs --test
+
+      - name: Reviewer bilingual evidence-reference consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-bilingual-evidence-reference.mjs
+
+      - name: Reviewer identity-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-reviewer-identity-evidence.mjs --test
+
+      - name: Reviewer identity-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-reviewer-identity-evidence.mjs
+
+      - name: Review-evidence semantics regression fixtures
+        if: always()
+        run: node scripts/check-dgr-review-evidence-semantics.mjs --test
+
+      - name: Review-evidence semantics consistency gate
+        if: always()
+        run: node scripts/check-dgr-review-evidence-semantics.mjs
+
+      - name: Item-metadata structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-item-metadata-structure.mjs --test
+
+      - name: Item-metadata structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-item-metadata-structure.mjs
+
+      - name: Durable list-status review semantics regression fixtures
+        if: always()
+        run: node scripts/check-dgr-durable-review-status-semantics.mjs --test
+
+      - name: Durable list-status review semantics consistency gate
+        if: always()
+        run: node scripts/check-dgr-durable-review-status-semantics.mjs
+
+      - name: Terminal review-evidence regression fixtures
+        if: always()
+        run: node scripts/check-dgr-terminal-review-evidence.mjs --test
+
+      - name: Terminal review-evidence consistency gate
+        if: always()
+        run: node scripts/check-dgr-terminal-review-evidence.mjs
+
+      - name: Approval-table structure regression fixtures
+        if: always()
+        run: node scripts/check-dgr-approval-table-structure.mjs --test
+
+      - name: Approval-table structural consistency gate
+        if: always()
+        run: node scripts/check-dgr-approval-table-structure.mjs
+
+      - name: Approval-chain regression fixtures
+        if: always()
+        run: node scripts/check-dgr-approval-chain.mjs --test
+
+      - name: Approval-chain consistency gate
+        if: always()
+        run: node scripts/check-dgr-approval-chain.mjs
+
+      - name: Cross-artifact approval regression fixtures
+        if: always()
+        run: node scripts/check-dgr-cross-artifact-approval.mjs --test
+
+      - name: Cross-artifact approval consistency gate
+        if: always()
+        run: node scripts/check-dgr-cross-artifact-approval.mjs
+
+      - name: Strict Tier-A matrix cross-field gate
+        if: always()
+        run: node scripts/check-dgr-matrix-tier-a-evidence.mjs
+
+      - name: Independent official-task coverage gate
+        if: always()
+        run: node scripts/check-dgr-official-task-coverage.mjs
+
+  full-dgr-readiness:
+    name: Full DGR readiness
+    needs: regulatory-governance-integrity
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require regulatory governance integrity
+        if: needs.regulatory-governance-integrity.result != 'success'
+        run: |
+          echo "::error::Regulatory governance integrity concluded '${{ needs.regulatory-governance-integrity.result }}'; Full DGR readiness cannot pass."
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Full DGR readiness artifact gate
+        run: node scripts/check-dgr-readiness-artifacts.mjs
