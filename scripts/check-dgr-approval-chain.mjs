@@ -104,16 +104,20 @@ function completedReview(value, kind) {
   if (kind === "en" && !looksExplicitlyBilingual(credential)) {
     return { ok: false, reason: "EN reviewer credential does not explicitly establish bilingual competence" };
   }
-  return { ok: true };
+  return { ok: true, date };
+}
+
+function finalApprovalDate(value = "") {
+  const text = normalize(value);
+  const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
+  if (!isApproved(text) || !date || !isRealNonFutureIsoDate(date)) return "";
+  const body = text.replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "");
+  const name = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
+  return looksLikeFullName(name) ? date : "";
 }
 
 function finalApprovalComplete(value = "") {
-  const text = normalize(value);
-  const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
-  if (!isApproved(text) || !date || !isRealNonFutureIsoDate(date)) return false;
-  const body = text.replace(/^APPROVED\b\s*[:\-–—]?\s*/i, "");
-  const name = body.slice(0, body.indexOf(date)).replace(/[;,\-–—]+\s*$/g, "").trim();
-  return looksLikeFullName(name);
+  return Boolean(finalApprovalDate(value));
 }
 
 function field(block, label) {
@@ -166,7 +170,18 @@ function approvedRecordErrors(record) {
   if (!fr.ok) errors.push(`Gate 2 incomplete: ${fr.reason}`);
   const en = completedReview(record.en, "en");
   if (!en.ok) errors.push(`Gate 3 incomplete: ${en.reason}`);
+  const approvalDate = finalApprovalDate(record.approval);
   if (!finalApprovalComplete(record.approval)) errors.push("Gate 4 accountable reviewer full name + real non-future ISO date missing");
+
+  if (fr.ok && en.ok && en.date < fr.date) {
+    errors.push(`Gate 3 chronology invalid: EN bilingual review date ${en.date} predates FR technical review date ${fr.date}`);
+  }
+  if (approvalDate && fr.ok && approvalDate < fr.date) {
+    errors.push(`Gate 4 chronology invalid: final approval date ${approvalDate} predates FR technical review date ${fr.date}`);
+  }
+  if (approvalDate && en.ok && approvalDate < en.date) {
+    errors.push(`Gate 4 chronology invalid: final approval date ${approvalDate} predates EN bilingual review date ${en.date}`);
+  }
   return errors;
 }
 
@@ -223,9 +238,21 @@ function expect(name, text, shouldFail) {
 function fixtures() {
   const valid = `## Q-7.2-001 — fixture\n\n**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, 2026-09-06\n`;
   const validList = valid.replaceAll("\n**", "\n- **");
+  const ordered = valid
+    .replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, DGR/CBTA Instructor, 2026-09-04")
+    .replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2026-09-05");
+  const enBeforeFr = valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2026-09-05");
+  const approvalBeforeEn = ordered
+    .replace("John Smith, Bilingual DGR Reviewer, 2026-09-05", "John Smith, Bilingual DGR Reviewer, 2026-09-06")
+    .replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2026-09-05");
+  const approvalBeforeFr = valid.replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2026-09-05");
   const gap = valid.replace("Q-7.2-001", "Q-7.2-002").replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained");
   expect("valid-approved-chain", valid, false);
+  expect("ordered-approved-chain", ordered, false);
   expect("valid-list-form-approved-chain", validList, false);
+  expect("en-review-before-fr-review", enBeforeFr, true);
+  expect("approval-before-en-review", approvalBeforeEn, true);
+  expect("approval-before-fr-review", approvalBeforeFr, true);
   expect("list-form-source-gap-approved", validList.replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained"), true);
   expect("list-form-pending-en-review", validList.replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED"), true);
   expect("source-gap-approved", gap, true);
