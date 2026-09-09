@@ -43,7 +43,7 @@ export function latestSuccessfulFullDb(): BackupRecord | undefined {
 
 export function recordBackupEvent(entry: Omit<BackupRecord, "id" | "created_at">): void {
   getDb()
-    .prepare(`INSERT INTO backup_records (type, status, size_bytes, sha256, duration_seconds, detail) VALUES (?, ?, ?, ?, ?, ?)`) 
+    .prepare(`INSERT INTO backup_records (type, status, size_bytes, sha256, duration_seconds, detail) VALUES (?, ?, ?, ?, ?, ?)`)
     .run(entry.type, entry.status, entry.size_bytes, entry.sha256, entry.duration_seconds, entry.detail);
 }
 
