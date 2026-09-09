@@ -4,9 +4,10 @@
  * Fail-closed DGR/CBTA approval-chain guard.
  *
  * This checker does not decide regulatory correctness and never approves a
- * question. It only rejects durable APPROVED claims that skip the repository's
- * documented source, qualified-FR-review, qualified bilingual-review, or
- * final-signoff gates.
+ * question. It rejects contradictory FR→EN review chronology as soon as both
+ * terminal reviews are recorded, and rejects durable APPROVED claims that skip
+ * the repository's documented source, qualified-FR-review, qualified
+ * bilingual-review, or final-signoff gates.
  */
 
 import fs from "node:fs";
@@ -162,6 +163,15 @@ function tableRecords(text, artifact, kind) {
 
 const recordsFromText = (text, artifact, kind) => [...itemRecords(text, artifact, kind), ...tableRecords(text, artifact, kind)];
 
+function reviewSequenceErrors(record) {
+  const fr = completedReview(record.fr, "fr");
+  const en = completedReview(record.en, "en");
+  if (fr.ok && en.ok && en.date < fr.date) {
+    return [`Gate 3 chronology invalid: EN bilingual review date ${en.date} predates FR technical review date ${fr.date}`];
+  }
+  return [];
+}
+
 function approvedRecordErrors(record) {
   if (!isApproved(record.approval)) return [];
   const errors = [];
@@ -173,9 +183,6 @@ function approvedRecordErrors(record) {
   const approvalDate = finalApprovalDate(record.approval);
   if (!finalApprovalComplete(record.approval)) errors.push("Gate 4 accountable reviewer full name + real non-future ISO date missing");
 
-  if (fr.ok && en.ok && en.date < fr.date) {
-    errors.push(`Gate 3 chronology invalid: EN bilingual review date ${en.date} predates FR technical review date ${fr.date}`);
-  }
   if (approvalDate && fr.ok && approvalDate < fr.date) {
     errors.push(`Gate 4 chronology invalid: final approval date ${approvalDate} predates FR technical review date ${fr.date}`);
   }
@@ -188,6 +195,7 @@ function approvedRecordErrors(record) {
 function validate(records, crossArtifact = true) {
   const errors = [];
   for (const record of records) {
+    for (const error of reviewSequenceErrors(record)) errors.push(`${record.artifact}: ${record.id} (${record.format}) — ${error}`);
     for (const error of approvedRecordErrors(record)) errors.push(`${record.artifact}: ${record.id} (${record.format}) — ${error}`);
   }
   if (!crossArtifact) return errors;
@@ -227,7 +235,7 @@ function repositoryCheck() {
   }
   const approved = new Set(records.filter((r) => isApproved(r.approval)).map((r) => r.id));
   console.log(`DGR APPROVAL-CHAIN CHECK: PASS (${approved.size} APPROVED item(s) observed)`);
-  console.log("PASS validates only the recorded sign-off chain; it does not prove regulatory correctness or ANAC/IATA approval.");
+  console.log("PASS validates recorded FR→EN review chronology plus the final sign-off chain; it does not prove regulatory correctness or ANAC/IATA approval.");
 }
 
 function expect(name, text, shouldFail) {
@@ -242,6 +250,11 @@ function fixtures() {
     .replace("Jane Doe, DGR/CBTA Instructor, 2026-09-06", "Jane Doe, DGR/CBTA Instructor, 2026-09-04")
     .replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2026-09-05");
   const enBeforeFr = valid.replace("John Smith, Bilingual DGR Reviewer, 2026-09-06", "John Smith, Bilingual DGR Reviewer, 2026-09-05");
+  const pendingOrdered = ordered.replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
+  const pendingEnBeforeFr = enBeforeFr.replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
+  const pendingFrOnly = valid
+    .replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED")
+    .replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
   const approvalBeforeEn = ordered
     .replace("John Smith, Bilingual DGR Reviewer, 2026-09-05", "John Smith, Bilingual DGR Reviewer, 2026-09-06")
     .replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2026-09-05");
@@ -251,6 +264,9 @@ function fixtures() {
   expect("ordered-approved-chain", ordered, false);
   expect("valid-list-form-approved-chain", validList, false);
   expect("en-review-before-fr-review", enBeforeFr, true);
+  expect("pending-ordered-fr-en-reviews", pendingOrdered, false);
+  expect("pending-en-review-before-fr-review", pendingEnBeforeFr, true);
+  expect("pending-fr-review-only", pendingFrOnly, false);
   expect("approval-before-en-review", approvalBeforeEn, true);
   expect("approval-before-fr-review", approvalBeforeFr, true);
   expect("list-form-source-gap-approved", validList.replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained"), true);
