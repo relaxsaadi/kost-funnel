@@ -149,7 +149,7 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
   // current-edition locator rather than vague provisional prose.
   if (nonVerifiedEvidence) return errors;
 
-  if (hasProvisionalPhrase(evidence)) {
+  if (hasProvisionalPhrase(evidence) && !hasNonDirectItemEvidence(evidence)) {
     errors.push("Tier-A evidence cell is provisional but does not use an explicit non-verified source state");
   }
   if (!hasCurrentEdition2026(evidence)) {
