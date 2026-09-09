@@ -1,6 +1,7 @@
 const NON_VERIFIED_EVIDENCE_RE = /SOURCE GAP|SOURCE CONFLICT|NOT YET VERIFIED|STALE CITATION|PARTIALLY CONFIRMED|\bDRAFT\b|SOURCE REQUIRED/i;
 const NON_VERIFIED_FR_STATE_RE = /SOURCE GAP|SOURCE CONFLICT|NOT YET VERIFIED|NOT VERIFIED|UNVERIFIED|STALE CITATION|PARTIALLY CONFIRMED|\bDRAFT\b|SOURCE REQUIRED|NOT ATTEMPTED|UNATTEMPTED/i;
 const PROVISIONAL_RE = /\b(?:pending|tbd|todo|requested|needed|missing)\b|\bto\s+(?:verify|check|confirm|locate)\b|\b(?:needs?|requires?)\s+(?:verification|checking|confirmation|a\s+locator|locator)\b|(?:à|a)\s+(?:vérifier|verifier|contrôler|controler|confirmer|localiser)/i;
+const NON_DIRECT_ITEM_EVIDENCE_RE = /\brepresentative\s+(?:sample|evidence|spot[- ]?check)\b|\b(?:item(?:'s)?\s+own\s+)?(?:specific\s+)?citation\s+(?:was\s+)?not\s+independently\s+re[- ]?read\b|\bnot\s+independently\s+(?:re[- ]?read|read|verified|checked)\b|\bcitation\s+(?:is\s+|was\s+)?used\s+as[- ]is\b|\bfollows?\s+(?:the\s+)?same\s+verified\s+(?:batch\s+)?pattern\b|\bsame\s+(?:verified\s+)?citation\s+pattern\b/i;
 
 export function isExplicitNonVerifiedEvidence(value) {
   return NON_VERIFIED_EVIDENCE_RE.test(String(value ?? ""));
@@ -88,6 +89,10 @@ export function hasProvisionalPhrase(value) {
   return PROVISIONAL_RE.test(String(value ?? ""));
 }
 
+export function hasNonDirectItemEvidence(value) {
+  return NON_DIRECT_ITEM_EVIDENCE_RE.test(String(value ?? ""));
+}
+
 export function reviewerAndDateLooksComplete(value) {
   const text = String(value ?? "").trim();
   const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] ?? "";
@@ -122,6 +127,9 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
     if (hasProvisionalPhrase(evidence)) {
       errors.push("FR verified state relies on provisional/pending Tier-A evidence wording");
     }
+    if (hasNonDirectItemEvidence(evidence)) {
+      errors.push("FR verified state relies on representative/indirect or explicitly non-item-specific Tier-A evidence wording");
+    }
     if (!hasCurrentEdition2026(evidence)) {
       errors.push("FR verified state lacks explicit IATA DGR 67th Edition 2026 evidence identification");
     }
@@ -134,9 +142,11 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
     return errors;
   }
 
-  // Non-verified FR states may legitimately carry an explicit GAP/CONFLICT/
-  // DRAFT marker. Otherwise, a cell that presents itself as evidence must still
-  // be a current-edition locator rather than vague or provisional prose.
+  // A non-verified FR state such as DRAFT / SOURCE GAP / SOURCE CONFLICT may
+  // retain representative or prior-locator wording as a reconciliation lead.
+  // That wording becomes a hard failure only if the row claims FR verification.
+  // Otherwise, a cell presenting affirmative evidence must still identify a
+  // current-edition locator rather than vague provisional prose.
   if (nonVerifiedEvidence) return errors;
 
   if (hasProvisionalPhrase(evidence)) {
