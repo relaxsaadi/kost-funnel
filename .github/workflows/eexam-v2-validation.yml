@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   validate:
-    name: lint-type-unit-build
+    name: lint-type-unit-e2e-build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -64,6 +64,18 @@ jobs:
 
       - name: Unit tests
         run: pnpm test:unit
+
+      # Readiness gate: the repository already contains a real Playwright
+      # production-build E2E suite, but the validation workflow previously
+      # never executed it. Install only Chromium (the configured project)
+      # and fail the PR/branch run if the candidate/admin/auditor workflows
+      # regress. No production URL or real email delivery is used: the
+      # Playwright config starts an isolated local build with EMAIL_MODE=log.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: pnpm test:e2e
 
       - name: Local backup + restore drill
         run: |
