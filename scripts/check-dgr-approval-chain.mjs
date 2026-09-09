@@ -4,10 +4,10 @@
  * Fail-closed DGR/CBTA approval-chain guard.
  *
  * This checker does not decide regulatory correctness and never approves a
- * question. It rejects contradictory FR→EN review chronology as soon as both
- * terminal reviews are recorded, and rejects durable APPROVED claims that skip
- * the repository's documented source, qualified-FR-review, qualified
- * bilingual-review, or final-signoff gates.
+ * question. It requires terminal FR technical review before terminal EN
+ * bilingual review, rejects contradictory FR→EN review chronology, and rejects
+ * durable APPROVED claims that skip the repository's documented source,
+ * qualified-FR-review, qualified bilingual-review, or final-signoff gates.
  */
 
 import fs from "node:fs";
@@ -166,6 +166,9 @@ const recordsFromText = (text, artifact, kind) => [...itemRecords(text, artifact
 function reviewSequenceErrors(record) {
   const fr = completedReview(record.fr, "fr");
   const en = completedReview(record.en, "en");
+  if (en.ok && !fr.ok) {
+    return [`Gate 3 sequence invalid: terminal EN bilingual review recorded before a valid terminal FR technical review (${fr.reason})`];
+  }
   if (fr.ok && en.ok && en.date < fr.date) {
     return [`Gate 3 chronology invalid: EN bilingual review date ${en.date} predates FR technical review date ${fr.date}`];
   }
@@ -235,7 +238,7 @@ function repositoryCheck() {
   }
   const approved = new Set(records.filter((r) => isApproved(r.approval)).map((r) => r.id));
   console.log(`DGR APPROVAL-CHAIN CHECK: PASS (${approved.size} APPROVED item(s) observed)`);
-  console.log("PASS validates recorded FR→EN review chronology plus the final sign-off chain; it does not prove regulatory correctness or ANAC/IATA approval.");
+  console.log("PASS validates terminal FR→EN sequencing, review chronology, and the final sign-off chain; it does not prove regulatory correctness or ANAC/IATA approval.");
 }
 
 function expect(name, text, shouldFail) {
@@ -255,6 +258,9 @@ function fixtures() {
   const pendingFrOnly = valid
     .replace("BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by John Smith, Bilingual DGR Reviewer, 2026-09-06)", "BILINGUAL TECHNICAL REVIEW REQUIRED")
     .replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
+  const pendingEnOnly = valid
+    .replace(" — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, DGR/CBTA Instructor, 2026-09-06)", "")
+    .replace("APPROVED — Jane Doe, 2026-09-06", "PENDING REVIEWER + DATE");
   const approvalBeforeEn = ordered
     .replace("John Smith, Bilingual DGR Reviewer, 2026-09-05", "John Smith, Bilingual DGR Reviewer, 2026-09-06")
     .replace("APPROVED — Jane Doe, 2026-09-06", "APPROVED — Jane Doe, 2026-09-05");
@@ -267,6 +273,7 @@ function fixtures() {
   expect("pending-ordered-fr-en-reviews", pendingOrdered, false);
   expect("pending-en-review-before-fr-review", pendingEnBeforeFr, true);
   expect("pending-fr-review-only", pendingFrOnly, false);
+  expect("pending-en-review-without-fr-review", pendingEnOnly, true);
   expect("approval-before-en-review", approvalBeforeEn, true);
   expect("approval-before-fr-review", approvalBeforeFr, true);
   expect("list-form-source-gap-approved", validList.replace("FROZEN FR / SOURCE VERIFIED", "FR SOURCE GAP CONFIRMED — Tier B/C basis retained"), true);
