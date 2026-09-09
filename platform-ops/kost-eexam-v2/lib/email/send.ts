@@ -7,10 +7,11 @@
 // réseau — une création de candidat/affectation d'examen ne peut jamais
 // échouer parce que Resend est indisponible ou lent ; au pire, l'email
 // reste QUEUED/FAILED et une reprise (processOutboxRetries, appelée par
-// cron ou par "Renvoyer") le rattrape plus tard — le corps rendu est
-// persisté (rendered_html/rendered_text) pour que ce retry fonctionne
-// réellement même après un redémarrage du process, pas seulement en
-// mémoire du premier essai.
+// un runner opérationnel lorsqu'il est réellement installé, ou par
+// "Renvoyer") le rattrape plus tard — le corps rendu est persisté
+// (rendered_html/rendered_text) pour que ce retry fonctionne réellement
+// même après un redémarrage du process, pas seulement en mémoire du
+// premier essai.
 // Pas de garde "server-only" — voir lib/email/audit.ts pour la
 // justification (module de domaine, doit rester testable via node:test).
 import { getDb, nowIso } from "../db";
@@ -209,15 +210,37 @@ async function attemptSend(notificationId: number, input: SendAttemptInput): Pro
   }
 }
 
+export interface OutboxRetryResult {
+  /** Nombre de vraies tentatives fournisseur lancées pendant ce run. */
+  attempted: number;
+  sent: number;
+  stillFailed: number;
+  /** Lignes non envoyées parce qu'une garde de politique/configuration l'interdit. */
+  skipped: number;
+  /** Sous-ensemble de skipped devenu terminal SUPPRESSED pendant ce run. */
+  terminalized: number;
+}
+
 /** §36 — reprise bornée des échecs transitoires, via le corps rendu
  * persisté (fonctionne même après redémarrage du process, contrairement à
  * une simple retry en mémoire). Ne retente JAMAIS un bounce dur / une
  * plainte (déjà marqués BOUNCED/COMPLAINED par le webhook — jamais
  * remis à FAILED) — uniquement les FAILED dont retry_count < MAX_RETRIES
- * et dont le corps est encore présent. Appelée par cron
- * (app/api/notifications/retry/route.ts) ou par une action admin
- * "Renvoyer" (§41). */
-export async function processOutboxRetries(limit = 25): Promise<{ attempted: number; sent: number; stillFailed: number; skipped: number }> {
+ * et dont le corps est encore présent.
+ *
+ * Important pour la convergence : une ligne FAILED peut devenir
+ * non-envoyable APRÈS son échec initial (EMAIL_MODE=log, retrait de
+ * l'allowlist, hard bounce/plainte). Dans ce cas elle devient SUPPRESSED et
+ * son corps est purgé, plutôt que de rester FAILED et d'être resélectionnée
+ * à chaque run. Cela ne contourne jamais les gardes : aucun appel réseau
+ * n'est fait pour ces lignes. Une clé Resend absente, en revanche, est une
+ * panne de configuration potentiellement temporaire : la ligne reste
+ * FAILED et ne consomme pas son budget de retry tant qu'aucune vraie
+ * tentative fournisseur n'a eu lieu.
+ *
+ * L'installation d'un runner automatique reste une étape opérationnelle
+ * distincte ; cette fonction ne prétend pas qu'un cron est installé. */
+export async function processOutboxRetries(limit = 25): Promise<OutboxRetryResult> {
   const db = getDb();
   const candidates = db
     .prepare(
@@ -235,25 +258,45 @@ export async function processOutboxRetries(limit = 25): Promise<{ attempted: num
     idempotency_key: string;
   }[];
 
-  if (!isResendApiKeyConfigured()) return { attempted: 0, sent: 0, stillFailed: 0, skipped: candidates.length };
-
-  // L'expéditeur d'origine n'est pas reconstruit ici (non persisté par
-  // design — le sous-système notifications n'a pas besoin de retenir
-  // "quelle identité" a servi, seulement "quel provider/quel template") ;
-  // les retries utilisent l'identité notifications par défaut, sûre pour
-  // tout type de contenu déjà jugé conforme à l'envoi lors du premier
-  // essai (le corps HTML/texte est identique, seul l'en-tête From peut
-  // différer légèrement d'un renvoi à l'origine — acceptable pour une
-  // reprise best-effort, jamais pour le premier essai).
+  const resendConfigured = isResendApiKeyConfigured();
   const { getSenderNotifications } = await import("./config");
   const sender = getSenderNotifications();
 
+  let attempted = 0;
   let sent = 0;
   let stillFailed = 0;
+  let skipped = 0;
+  let terminalized = 0;
+
   for (const row of candidates) {
     const decision = resolveDeliveryDecision(row.recipient_email);
-    if (!decision.shouldSendReal) continue;
 
+    if (!decision.shouldSendReal) {
+      // Réutilise attemptSend() afin que la même règle de suppression soit
+      // appliquée à l'envoi initial ET au retry. Cette branche s'arrête
+      // avant toute vérification/appel Resend : aucun réseau possible.
+      const status = await attemptSend(row.id, {
+        recipientEmail: row.recipient_email,
+        sender,
+        subject: row.subject,
+        html: row.rendered_html,
+        text: row.rendered_text,
+        idempotencyKey: row.idempotency_key,
+      });
+      skipped++;
+      if (status === "SUPPRESSED") terminalized++;
+      continue;
+    }
+
+    if (!resendConfigured) {
+      // Pas une tentative fournisseur : ne pas mentir dans les compteurs et
+      // ne pas brûler le budget de retries. La ligne reste FAILED avec son
+      // corps durable pour reprendre après correction de configuration.
+      skipped++;
+      continue;
+    }
+
+    attempted++;
     const status = await attemptSend(row.id, {
       recipientEmail: row.recipient_email,
       sender,
@@ -265,5 +308,6 @@ export async function processOutboxRetries(limit = 25): Promise<{ attempted: num
     if (status === "SENT") sent++;
     else stillFailed++;
   }
-  return { attempted: candidates.length, sent, stillFailed, skipped: 0 };
+
+  return { attempted, sent, stillFailed, skipped, terminalized };
 }
