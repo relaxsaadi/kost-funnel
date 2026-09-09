@@ -65,5 +65,11 @@ jobs:
       - name: Unit tests
         run: pnpm test:unit
 
+      - name: Local backup + restore drill
+        run: |
+          pnpm migrate
+          pnpm backup
+          pnpm restore-test
+
       - name: Production build
         run: pnpm build
