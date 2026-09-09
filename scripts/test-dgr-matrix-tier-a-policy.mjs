@@ -102,13 +102,14 @@ for (const tierAEvidence of [
   );
 }
 
-assert.ok(
+assert.deepEqual(
   errors({
     tierAEvidence: "IATA DGR 67th Edition 2026 §1.1 — this item's own specific citation was not independently re-read this pass",
-    frState: "DRAFT",
+    frState: "DRAFT / NOT YET VERIFIED",
     frVerifier: "",
-  }).some((error) => error.includes("explicit non-verified evidence state")),
-  "non-item-specific evidence wording must use an explicit non-verified evidence marker even when the FR state is non-terminal",
+  }),
+  [],
+  "a truthful non-terminal FR state may retain representative evidence wording as a reconciliation lead",
 );
 
 assert.deepEqual(
