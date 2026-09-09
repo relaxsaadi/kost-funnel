@@ -142,15 +142,13 @@ export function validateTierAEvidenceForFrState({ tierAEvidence, frState, frVeri
     return errors;
   }
 
-  // Non-verified FR states may legitimately carry an explicit GAP/CONFLICT/
-  // DRAFT marker. Otherwise, a cell that presents itself as evidence must still
-  // be a current-edition locator rather than vague, provisional, representative,
-  // or explicitly non-item-specific prose.
+  // A non-verified FR state such as DRAFT / SOURCE GAP / SOURCE CONFLICT may
+  // retain representative or prior-locator wording as a reconciliation lead.
+  // That wording becomes a hard failure only if the row claims FR verification.
+  // Otherwise, a cell presenting affirmative evidence must still identify a
+  // current-edition locator rather than vague provisional prose.
   if (nonVerifiedEvidence) return errors;
 
-  if (hasNonDirectItemEvidence(evidence)) {
-    errors.push("Tier-A evidence is representative/indirect or explicitly non-item-specific but does not use an explicit non-verified evidence state");
-  }
   if (hasProvisionalPhrase(evidence)) {
     errors.push("Tier-A evidence cell is provisional but does not use an explicit non-verified source state");
   }
