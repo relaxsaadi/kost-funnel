@@ -1,9 +1,10 @@
 // Test de restauration RÉEL — §21 de la mission : « une documentation seule
 // ne suffit pas ». Restaure la dernière sauvegarde réussie explicitement
 // journalisée dans un répertoire temporaire isolé et jetable (jamais un
-// chemin partagé avec la production), vérifie son SHA-256 enregistré,
-// l'intégrité SQLite native + les clés étrangères + les lignes des tables
-// clés, PUIS supprime la copie — que le test réussisse ou échoue.
+// chemin partagé avec la production), vérifie sa taille + son SHA-256
+// enregistrés AVANT ouverture SQLite, puis l'intégrité SQLite native + les
+// clés étrangères + les lignes des tables clés, PUIS supprime la copie — que
+// le test réussisse ou échoue.
 import { DatabaseSync } from "node:sqlite";
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +14,9 @@ import { latestSuccessfulFullDb, recordBackupEvent } from "../lib/backup";
 import {
   artifactNameFromDetail,
   assertRecordedSha256,
-  verifyBackupArtifact,
+  assertRecordedSize,
+  fingerprintBackupArtifact,
+  verifyBackupSqliteIntegrity,
 } from "../lib/backup-integrity";
 
 const KEY_TABLES = ["users", "companies", "groups", "questions", "assessments", "attempts", "results", "audit_logs"];
@@ -32,6 +35,7 @@ function main() {
   let status: "success" | "failure" = "success";
   let detail = "";
   let isolatedDir: string | null = null;
+  let verifiedSizeBytes: number | null = null;
   let verifiedSha256: string | null = null;
 
   try {
@@ -52,11 +56,16 @@ function main() {
     const restoredPath = join(isolatedDir, "restored.db");
     copyFileSync(backupFile, restoredPath);
 
-    // Vérifier la copie réellement restaurée lie le drill aux octets testés,
-    // y compris si le fichier source changeait entre sélection et copie.
-    const verification = verifyBackupArtifact(restoredPath);
+    // Empreinter d'abord la copie réellement restaurée et la comparer au
+    // journal AVANT toute ouverture SQLite. Le drill est ainsi lié aux octets
+    // enregistrés et échoue fermé sur taille/SHA absents ou divergents.
+    const verification = fingerprintBackupArtifact(restoredPath);
+    assertRecordedSize(verification.sizeBytes, backupRecord.size_bytes);
     assertRecordedSha256(verification.sha256, backupRecord.sha256);
+    verifiedSizeBytes = verification.sizeBytes;
     verifiedSha256 = verification.sha256;
+
+    verifyBackupSqliteIntegrity(restoredPath);
 
     const restored = new DatabaseSync(restoredPath, { readOnly: true });
     const counts: Record<string, number> = {};
@@ -69,7 +78,7 @@ function main() {
       restored.close();
     }
 
-    detail = `artifact=${artifactName}; sha256=${verification.sha256.slice(0, 12)}…; integrity=ok; foreign_keys=ok; rows=${Object.entries(counts)
+    detail = `artifact=${artifactName}; size_bytes=${verification.sizeBytes}; sha256=${verification.sha256.slice(0, 12)}…; integrity=ok; foreign_keys=ok; rows=${Object.entries(counts)
       .map(([table, count]) => `${table}:${count}`)
       .join(",")}`;
     console.log("Test de restauration réussi.");
@@ -86,7 +95,7 @@ function main() {
   recordBackupEvent({
     type: "restore_test",
     status,
-    size_bytes: null,
+    size_bytes: verifiedSizeBytes,
     sha256: verifiedSha256,
     duration_seconds: durationSeconds,
     detail,

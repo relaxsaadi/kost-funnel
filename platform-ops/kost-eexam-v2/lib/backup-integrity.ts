@@ -9,14 +9,19 @@ export interface VerifiedBackupArtifact {
 }
 
 /**
- * Vérifie l'artefact SQLite lui-même avant qu'il puisse autoriser une purge
- * destructive d'anciennes sauvegardes. Un hash seul prouve l'identité des
- * octets, pas l'intégrité logique de la base.
+ * Empreinte l'artefact sans l'ouvrir comme base SQLite. Le restore drill peut
+ * ainsi comparer taille + SHA-256 au journal avant de confier les octets au
+ * parseur SQLite.
  */
-export function verifyBackupArtifact(path: string): VerifiedBackupArtifact {
+export function fingerprintBackupArtifact(path: string): VerifiedBackupArtifact {
   const buf = readFileSync(path);
-  const sha256 = createHash("sha256").update(buf).digest("hex");
+  return {
+    sizeBytes: buf.byteLength,
+    sha256: createHash("sha256").update(buf).digest("hex"),
+  };
+}
 
+export function verifyBackupSqliteIntegrity(path: string): void {
   let artifactDb: DatabaseSync | null = null;
   try {
     artifactDb = new DatabaseSync(path, { readOnly: true });
@@ -36,8 +41,17 @@ export function verifyBackupArtifact(path: string): VerifiedBackupArtifact {
   } finally {
     artifactDb?.close();
   }
+}
 
-  return { sizeBytes: buf.byteLength, sha256 };
+/**
+ * Vérifie l'artefact SQLite lui-même avant qu'il puisse autoriser une purge
+ * destructive d'anciennes sauvegardes. Un hash seul prouve l'identité des
+ * octets, pas l'intégrité logique de la base.
+ */
+export function verifyBackupArtifact(path: string): VerifiedBackupArtifact {
+  const fingerprint = fingerprintBackupArtifact(path);
+  verifyBackupSqliteIntegrity(path);
+  return fingerprint;
 }
 
 /**
@@ -70,5 +84,14 @@ export function assertRecordedSha256(actual: string, expected: string | null): v
   }
   if (actual.toLowerCase() !== expected.toLowerCase()) {
     throw new Error("Le SHA-256 de l'artefact restauré ne correspond pas au journal de sauvegarde");
+  }
+}
+
+export function assertRecordedSize(actual: number, expected: number | null): void {
+  if (expected === null || !Number.isSafeInteger(expected) || expected <= 0) {
+    throw new Error("Le journal de sauvegarde ne contient pas de taille d'artefact exploitable");
+  }
+  if (actual !== expected) {
+    throw new Error("La taille de l'artefact restauré ne correspond pas au journal de sauvegarde");
   }
 }
