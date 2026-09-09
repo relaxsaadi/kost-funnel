@@ -72,3 +72,12 @@ export function assertRecordedSha256(actual: string, expected: string | null): v
     throw new Error("Le SHA-256 de l'artefact restauré ne correspond pas au journal de sauvegarde");
   }
 }
+
+export function assertRecordedSize(actual: number, expected: number | null): void {
+  if (!Number.isSafeInteger(expected) || expected === null || expected <= 0) {
+    throw new Error("Le journal de sauvegarde ne contient pas de taille d'artefact exploitable");
+  }
+  if (actual !== expected) {
+    throw new Error("La taille de l'artefact restauré ne correspond pas au journal de sauvegarde");
+  }
+}
