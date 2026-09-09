@@ -35,6 +35,7 @@ function main() {
   let status: "success" | "failure" = "success";
   let detail = "";
   let isolatedDir: string | null = null;
+  let verifiedSizeBytes: number | null = null;
   let verifiedSha256: string | null = null;
 
   try {
@@ -61,6 +62,7 @@ function main() {
     const verification = fingerprintBackupArtifact(restoredPath);
     assertRecordedSize(verification.sizeBytes, backupRecord.size_bytes);
     assertRecordedSha256(verification.sha256, backupRecord.sha256);
+    verifiedSizeBytes = verification.sizeBytes;
     verifiedSha256 = verification.sha256;
 
     verifyBackupSqliteIntegrity(restoredPath);
@@ -93,7 +95,7 @@ function main() {
   recordBackupEvent({
     type: "restore_test",
     status,
-    size_bytes: null,
+    size_bytes: verifiedSizeBytes,
     sha256: verifiedSha256,
     duration_seconds: durationSeconds,
     detail,
