@@ -24,14 +24,17 @@ export function latestOfType(type: "full_db" | "restore_test"): BackupRecord | u
 /**
  * Artefact de sauvegarde à utiliser pour un drill de restauration. Un drill ne
  * doit jamais sélectionner un fichier arbitraire par mtime : il doit être lié
- * au dernier événement full_db qui a réellement terminé en succès et à son
- * SHA-256 enregistré.
+ * au dernier événement full_db qui a réellement terminé en succès, possède un
+ * nom d'artefact explicitement journalisé et un SHA-256 enregistré.
  */
 export function latestSuccessfulFullDb(): BackupRecord | undefined {
   return getDb()
     .prepare(
       `SELECT * FROM backup_records
-       WHERE type = 'full_db' AND status = 'success' AND sha256 IS NOT NULL
+       WHERE type = 'full_db'
+         AND status = 'success'
+         AND sha256 IS NOT NULL
+         AND detail LIKE 'artifact=%'
        ORDER BY created_at DESC, id DESC
        LIMIT 1`,
     )
