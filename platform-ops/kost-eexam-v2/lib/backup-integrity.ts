@@ -74,7 +74,7 @@ export function assertRecordedSha256(actual: string, expected: string | null): v
 }
 
 export function assertRecordedSize(actual: number, expected: number | null): void {
-  if (!Number.isSafeInteger(expected) || expected === null || expected <= 0) {
+  if (expected === null || !Number.isSafeInteger(expected) || expected <= 0) {
     throw new Error("Le journal de sauvegarde ne contient pas de taille d'artefact exploitable");
   }
   if (actual !== expected) {
