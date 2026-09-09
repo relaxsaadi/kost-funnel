@@ -1,13 +1,16 @@
-// Historique des notifications (mission email §51) — lecture seule sur
-// notification_log, jamais de secret exposé (le HTML/texte rendu n'est
-// jamais renvoyé par ces fonctions, uniquement les métadonnées d'état déjà
-// jugées sûres à afficher — voir le commentaire sur rendered_html dans
-// lib/schema.sql). Filtres : statut / type d'événement / candidat / date /
-// tenant, comme demandé.
-// Pas de garde "server-only" — voir lib/email/audit.ts pour la
-// justification (module de domaine, doit rester testable via node:test).
+// Historique des notifications — métadonnées uniquement, jamais le contenu
+// rendu de l'email. Depuis #100, la lecture joint également les événements
+// provider signés conservés dans audit_logs afin qu'une plainte/bounce
+// arrivée après un autre terminal reste visible et filtrable.
 import { getDb } from "../db";
 import { EMAIL_EVENT_TYPES, type EmailEventType } from "./types";
+import { deriveCanonicalProviderOutcome, type CanonicalProviderOutcome } from "./webhook";
+
+export interface NotificationProviderEventRow {
+  provider_event_type: string;
+  provider_created_at: string;
+  received_at: string;
+}
 
 export interface NotificationHistoryRow {
   id: number;
@@ -18,7 +21,11 @@ export interface NotificationHistoryRow {
   recipient_email: string;
   event_type: string;
   subject: string;
+  /** Snapshot local historique (compatibilité opérations existantes). */
   status: string;
+  /** Outcome fournisseur fail-closed dérivé de TOUTE la preuve observée. */
+  provider_outcome: CanonicalProviderOutcome | null;
+  provider_events: NotificationProviderEventRow[];
   failure_reason_safe: string | null;
   retry_count: number;
   metadata_json: string | null;
@@ -27,27 +34,79 @@ export interface NotificationHistoryRow {
   delivered_at: string | null;
 }
 
+type NotificationHistoryBaseRow = Omit<NotificationHistoryRow, "provider_outcome" | "provider_events">;
+
 export interface NotificationHistoryFilters {
-  /** null = pas de restriction (administrator/auditor) ; tableau
-   * (potentiellement vide) = restreint à ces user_id — même contrat que
-   * lib/tenant-scope.ts::scopedUserIdsForSessionsOrNull, réutilisé tel
-   * quel par la page appelante pour un responsable pédagogique. */
   userIdsOrNull: number[] | null;
   status?: string;
   eventType?: string;
   userId?: number;
   companyId?: number;
-  /** Recherche libre sur l'email destinataire (LIKE, insensible à la casse). */
   search?: string;
-  /** Bornes inclusives sur n.created_at (format "YYYY-MM-DD", même
-   * convention que lib/results.ts — T00:00:00.000Z / T23:59:59.999Z).
-   * Mission "ADMIN/CLIENT/CANDIDATE UX IMPROVEMENTS" (2026-08-30) §12-13 —
-   * absent jusqu'ici, seule vraie lacune trouvée sur cette page (le reste
-   * des filtres était déjà correct, vérifié en direct contre des données
-   * réelles). */
   dateFrom?: string;
   dateTo?: string;
   limit?: number;
+}
+
+const STATUS_TO_PROVIDER_EVENT: Readonly<Record<string, string>> = {
+  SENT: "email.sent",
+  DELIVERED: "email.delivered",
+  DELAYED: "email.delivery_delayed",
+  BOUNCED: "email.bounced",
+  COMPLAINED: "email.complained",
+  FAILED: "email.failed",
+};
+
+function parseProviderEvent(metadataJson: string | null, receivedAt: string): NotificationProviderEventRow | null {
+  if (!metadataJson) return null;
+  try {
+    const metadata = JSON.parse(metadataJson) as {
+      provider?: unknown;
+      providerEventType?: unknown;
+      providerCreatedAt?: unknown;
+    };
+    if (
+      metadata.provider !== "resend" ||
+      typeof metadata.providerEventType !== "string" ||
+      typeof metadata.providerCreatedAt !== "string"
+    ) {
+      return null;
+    }
+    return {
+      provider_event_type: metadata.providerEventType,
+      provider_created_at: metadata.providerCreatedAt,
+      received_at: receivedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadProviderEvents(notificationIds: number[]): Map<number, NotificationProviderEventRow[]> {
+  const result = new Map<number, NotificationProviderEventRow[]>();
+  if (notificationIds.length === 0) return result;
+
+  const db = getDb();
+  const placeholders = notificationIds.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT target_id AS notification_id, timestamp, metadata_json
+       FROM audit_logs
+       WHERE action = 'notification_provider_event'
+         AND target_type = 'notification_log'
+         AND target_id IN (${placeholders})
+       ORDER BY timestamp ASC, id ASC`
+    )
+    .all(...notificationIds) as { notification_id: number; timestamp: string; metadata_json: string | null }[];
+
+  for (const row of rows) {
+    const event = parseProviderEvent(row.metadata_json, row.timestamp);
+    if (!event) continue;
+    const current = result.get(row.notification_id) ?? [];
+    current.push(event);
+    result.set(row.notification_id, current);
+  }
+  return result;
 }
 
 export function listNotificationHistory(filters: NotificationHistoryFilters): NotificationHistoryRow[] {
@@ -56,13 +115,32 @@ export function listNotificationHistory(filters: NotificationHistoryFilters): No
   const args: (string | number)[] = [];
 
   if (filters.userIdsOrNull !== null) {
-    if (filters.userIdsOrNull.length === 0) return []; // périmètre vide — aucune candidate à afficher
+    if (filters.userIdsOrNull.length === 0) return [];
     clauses.push(`n.user_id IN (${filters.userIdsOrNull.map(() => "?").join(",")})`);
     args.push(...filters.userIdsOrNull);
   }
   if (filters.status) {
-    clauses.push(`n.status = ?`);
-    args.push(filters.status);
+    const providerEventType = STATUS_TO_PROVIDER_EVENT[filters.status];
+    if (providerEventType) {
+      // Le filtre ne doit pas masquer un bounce/complaint durablement
+      // observé uniquement parce que le snapshot local avait déjà atteint
+      // un autre terminal. JSON.stringify() du journal produit exactement
+      // ce fragment ; valeur providerEventType ici issue d'une table fixe,
+      // jamais de l'entrée utilisateur.
+      clauses.push(
+        `(n.status = ? OR EXISTS (
+          SELECT 1 FROM audit_logs pe
+          WHERE pe.action = 'notification_provider_event'
+            AND pe.target_type = 'notification_log'
+            AND pe.target_id = n.id
+            AND pe.metadata_json LIKE ?
+        ))`
+      );
+      args.push(filters.status, `%"providerEventType":"${providerEventType}"%`);
+    } else {
+      clauses.push(`n.status = ?`);
+      args.push(filters.status);
+    }
   }
   if (filters.eventType) {
     clauses.push(`n.event_type = ?`);
@@ -77,7 +155,7 @@ export function listNotificationHistory(filters: NotificationHistoryFilters): No
     args.push(filters.companyId);
   }
   if (filters.search) {
-    clauses.push(`n.recipient_email LIKE ?`);
+    clauses.push(`LOWER(n.recipient_email) LIKE ?`);
     args.push(`%${filters.search.toLowerCase()}%`);
   }
   if (filters.dateFrom) {
@@ -91,8 +169,7 @@ export function listNotificationHistory(filters: NotificationHistoryFilters): No
 
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const limit = filters.limit ?? 200;
-
-  return db
+  const baseRows = db
     .prepare(
       `SELECT n.id, n.tenant_company_id, c.name AS company_name, n.user_id, u.full_name,
               n.recipient_email, n.event_type, n.subject, n.status, n.failure_reason_safe,
@@ -104,7 +181,17 @@ export function listNotificationHistory(filters: NotificationHistoryFilters): No
        ORDER BY n.id DESC
        LIMIT ?`
     )
-    .all(...args, limit) as unknown as NotificationHistoryRow[];
+    .all(...args, limit) as unknown as NotificationHistoryBaseRow[];
+
+  const providerEvents = loadProviderEvents(baseRows.map((row) => row.id));
+  return baseRows.map((row) => {
+    const events = providerEvents.get(row.id) ?? [];
+    return {
+      ...row,
+      provider_events: events,
+      provider_outcome: deriveCanonicalProviderOutcome(events.map((event) => event.provider_event_type)),
+    };
+  });
 }
 
 export function notificationHistorySummary(userIdsOrNull: number[] | null): { status: string; count: number }[] {
