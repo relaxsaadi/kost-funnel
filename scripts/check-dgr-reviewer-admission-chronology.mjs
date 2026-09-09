@@ -26,6 +26,10 @@ function normalize(value = '') {
   return String(value).replace(/[`*_]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function canonicalName(value = '') {
+  return normalize(value).normalize('NFKC').toLocaleLowerCase('en-US');
+}
+
 function markdownCells(line) {
   const text = String(line ?? '').trim();
   if (!text.startsWith('|') || !text.endsWith('|')) return [];
@@ -97,6 +101,7 @@ function parseRegistry(text, artifact = registryPath) {
       if (!id || /^[-–—]+$/.test(id)) continue;
       records.set(id, {
         id,
+        fullName: normalize(cells[1] ?? ''),
         admission: normalize(cells[5] ?? '').toUpperCase(),
         admissionDate: normalize(cells[6] ?? ''),
         active: normalize(cells[8] ?? '').toUpperCase(),
@@ -106,6 +111,14 @@ function parseRegistry(text, artifact = registryPath) {
 
   if (!found) errors.push(`${artifact}: missing canonical reviewer registry table`);
   return {errors, records};
+}
+
+function displayedNameBeforeReviewerId(value = '') {
+  let text = normalize(value).replace(/^APPROVED\b\s*[:\-–—]?\s*/i, '');
+  const match = reviewerRefRe.exec(text);
+  reviewerRefRe.lastIndex = 0;
+  if (!match || match.index == null) return '';
+  return text.slice(0, match.index).replace(/[\s,;:\-–—]+$/g, '').trim();
 }
 
 function chronologyErrors(value, label, registry) {
@@ -124,6 +137,10 @@ function chronologyErrors(value, label, registry) {
   if (record.admission !== 'OWNER VERIFIED' || record.active !== 'YES' || !realNonFutureIsoDate(record.admissionDate)) {
     errors.push(`${label}: reviewer ${refs[0]} lacks an active OWNER VERIFIED record with a real non-future Admission date`);
     return errors;
+  }
+  const displayedName = displayedNameBeforeReviewerId(text);
+  if (!displayedName || canonicalName(displayedName) !== canonicalName(record.fullName)) {
+    errors.push(`${label}: displayed reviewer name "${displayedName || 'missing'}" does not match ${refs[0]} registry full name "${record.fullName || 'missing'}"`);
   }
   const dates = [...text.matchAll(isoDateRe)].map((match)=>match[0]);
   if (dates.length !== 1 || !realNonFutureIsoDate(dates[0])) {
@@ -260,7 +277,7 @@ function repositoryCheck() {
     process.exit(1);
   }
   console.log('DGR REVIEWER ADMISSION CHRONOLOGY CHECK: PASS');
-  console.log('PASS means terminal review/sign-off dates do not predate the referenced reviewer owner-admission date; it does not prove regulatory correctness or reviewer competence.');
+  console.log('PASS means terminal review/sign-off identity is bound to the referenced active OWNER VERIFIED reviewer and dates do not predate owner admission; it does not prove regulatory correctness or reviewer competence.');
 }
 
 function fixtureRegistry() {
@@ -289,13 +306,18 @@ function fixtures() {
   const registry = parsed.records;
   expect('same-day-fr',validateMatrix(fixtureMatrix({frState:'FROZEN FR / SOURCE VERIFIED',frReviewer:'Jane Doe, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor, 2026-09-06'}),'7.2','same-day-fr.md',registry),false);
   expect('pre-admission-fr',validateMatrix(fixtureMatrix({frState:'FROZEN FR / SOURCE VERIFIED',frReviewer:'Jane Doe, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor, 2026-09-05'}),'7.2','pre-admission-fr.md',registry),true);
+  expect('mismatched-name-fr',validateMatrix(fixtureMatrix({frState:'FROZEN FR / SOURCE VERIFIED',frReviewer:'John Smith, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor, 2026-09-06'}),'7.2','mismatched-name-fr.md',registry),true);
   expect('same-day-en',validateMatrix(fixtureMatrix({enState:'BILINGUAL TECHNICAL REVIEW COMPLETE',enReviewer:'Jane Doe, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer, 2026-09-06'}),'7.2','same-day-en.md',registry),false);
   expect('pre-admission-en',validateMatrix(fixtureMatrix({enState:'BILINGUAL TECHNICAL REVIEW COMPLETE',enReviewer:'Jane Doe, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer, 2026-09-05'}),'7.2','pre-admission-en.md',registry),true);
+  expect('mismatched-name-en',validateMatrix(fixtureMatrix({enState:'BILINGUAL TECHNICAL REVIEW COMPLETE',enReviewer:'John Smith, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer, 2026-09-06'}),'7.2','mismatched-name-en.md',registry),true);
   const validArtifact = '**FR status:** FROZEN FR / SOURCE VERIFIED — FR TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor, 2026-09-06)\n**EN status:** BILINGUAL TECHNICAL REVIEW COMPLETE (reviewed by Jane Doe, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer, 2026-09-06)\n**Approval:** APPROVED — Jane Doe, reviewer-id=DGR-RVW-0001, 2026-09-06\n';
   expect('same-day-artifact',validateStructuredArtifacts(validArtifact,'valid.md',registry),false);
   expect('pre-admission-fr-artifact',validateStructuredArtifacts(validArtifact.replace('DGR/CBTA Instructor, 2026-09-06','DGR/CBTA Instructor, 2026-09-05'),'pre-fr.md',registry),true);
   expect('pre-admission-en-artifact',validateStructuredArtifacts(validArtifact.replace('Bilingual DGR Reviewer, 2026-09-06','Bilingual DGR Reviewer, 2026-09-05'),'pre-en.md',registry),true);
   expect('pre-admission-approval',validateStructuredArtifacts(validArtifact.replace('APPROVED — Jane Doe, reviewer-id=DGR-RVW-0001, 2026-09-06','APPROVED — Jane Doe, reviewer-id=DGR-RVW-0001, 2026-09-05'),'pre-approval.md',registry),true);
+  expect('borrowed-id-fr-artifact',validateStructuredArtifacts(validArtifact.replace('reviewed by Jane Doe, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor','reviewed by John Smith, reviewer-id=DGR-RVW-0001, DGR/CBTA Instructor'),'borrowed-id-fr.md',registry),true);
+  expect('borrowed-id-en-artifact',validateStructuredArtifacts(validArtifact.replace('reviewed by Jane Doe, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer','reviewed by John Smith, reviewer-id=DGR-RVW-0001, Bilingual DGR Reviewer'),'borrowed-id-en.md',registry),true);
+  expect('borrowed-id-approval',validateStructuredArtifacts(validArtifact.replace('APPROVED — Jane Doe, reviewer-id=DGR-RVW-0001','APPROVED — John Smith, reviewer-id=DGR-RVW-0001'),'borrowed-id-approval.md',registry),true);
   console.log('DGR reviewer admission chronology regression fixtures: PASS');
 }
 
