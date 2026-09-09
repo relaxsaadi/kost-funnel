@@ -59,17 +59,33 @@ export function hasCurrentEdition2026(value) {
   );
 }
 
+function dottedLocatorHasVersionPrefix(text, index) {
+  const prefix = text.slice(Math.max(0, index - 32), index);
+  return /(?:^|\b)(?:v(?:er(?:sion)?)?|rev(?:ision)?)\s*[.:#=_-]*\s*$/i.test(prefix);
+}
+
 export function hasConcreteLocator(value) {
   const text = String(value ?? "").replace(/[`*_]/g, " ");
 
   // Deterministic syntax only: this deliberately does not validate the cited
   // licensed IATA text. It requires a durable locator shape beyond the edition
   // and year, such as a section/table/page token or a dotted section number.
-  return Boolean(
+  if (
     /§{1,2}\s*\d+(?:\.\d+)*(?:\([a-z0-9]+\))*/i.test(text) ||
-      /\b(?:section|subsection|paragraph|para\.?|table|figure|fig\.?|appendix|attachment|page|p\.)\s*(?:[a-z]?\d[\w.-]*|[a-z])\b/i.test(text) ||
-      /\b[1-9]\d?(?:\.\d+){1,5}(?:\([a-z0-9]+\))*/i.test(text),
-  );
+    /\b(?:section|subsection|paragraph|para\.?|table|figure|fig\.?|appendix|attachment|page|p\.)\s*(?:[a-z]?\d[\w.-]*|[a-z])\b/i.test(text)
+  ) {
+    return true;
+  }
+
+  // Bare dotted references are used throughout the repository for genuine DGR
+  // section locators (for example `5.0.1.2(c)`), so they remain supported.
+  // However, a version/revision token such as `v1.0`, `version 2.3` or
+  // `rev. 3.1` is not a regulatory locator and must not satisfy this gate.
+  const dottedLocatorRe = /\b[1-9]\d?(?:\.\d+){1,5}(?:\([a-z0-9]+\))*/gi;
+  for (const match of text.matchAll(dottedLocatorRe)) {
+    if (!dottedLocatorHasVersionPrefix(text, match.index ?? 0)) return true;
+  }
+  return false;
 }
 
 export function hasCurrentEdition2026WithConcreteLocator(value) {
