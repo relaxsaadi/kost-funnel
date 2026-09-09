@@ -91,3 +91,10 @@ la dernière réconciliation des blockers et les preuves CI/runtime du même hea
 - Sort de l'historique de résultats V1 (migré vs archivé séparément).
 - Fournisseur/emplacement de la copie de sauvegarde chiffrée hors site.
 - Canal d'alerte actif (e-mail/SMS/Slack) pour le monitoring — actuellement journalisation seule.
+
+---
+
+**Rappel final (mission §55)** : la validation de ce plan par lecture ne
+constitue pas une autorisation de l'exécuter. Chaque étape ci-dessus reste
+à exécuter uniquement sur demande explicite et séparée, jamais en
+conséquence automatique d'un rapport de readiness favorable.
