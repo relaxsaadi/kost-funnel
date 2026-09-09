@@ -9,7 +9,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { validateTierAEvidenceForFrState } from "./lib/dgr-matrix-tier-a-policy.mjs";
+import {
+  hasIataDgrSourceIdentity,
+  validateTierAEvidenceForFrState,
+} from "./lib/dgr-matrix-tier-a-policy.mjs";
 
 const root = process.cwd();
 const functions = ["7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10"];
@@ -37,6 +40,32 @@ function normalizedHeader(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function validateSourceIdentityPolicyRegressions() {
+  const accepted = [
+    "DGR 67th Edition 2026 §5.0.1",
+    "IATA DGR 67th Edition 2026 §5.0.1",
+    "IATA Dangerous Goods Regulations 67th Edition 2026 §5.0.1",
+    "SOURCE VERIFIED — IATA Dangerous Goods Regulations 67th Edition 2026 Table 2.3.A",
+  ];
+  const rejected = [
+    "Company IATA Dangerous Goods Regulations Manual 67th Edition 2026 §5.0.1",
+    "Local Guide to IATA Dangerous Goods Regulations 67th Edition 2026 §5.0.1",
+    "IATA Dangerous Goods Regulations Training Manual 67th Edition 2026 §5.0.1",
+    "Dangerous Goods Regulations Company Manual IATA 67th Edition 2026 §5.0.1",
+  ];
+
+  for (const evidence of accepted) {
+    if (!hasIataDgrSourceIdentity(evidence)) {
+      fail(`Tier-A source-identity regression rejected canonical direct source form: ${evidence}`);
+    }
+  }
+  for (const evidence of rejected) {
+    if (hasIataDgrSourceIdentity(evidence)) {
+      fail(`Tier-A source-identity regression accepted third-party/full-title embedding: ${evidence}`);
+    }
+  }
 }
 
 function embeddedMatrixCandidates(fn) {
@@ -144,6 +173,8 @@ function validateMatrix(fn, artifactLabel, text) {
     fail(`${artifactLabel}: no matrix table with Function / Official task ID / Tier-A evidence / FR state / FR verifier columns found`);
   }
 }
+
+validateSourceIdentityPolicyRegressions();
 
 for (const fn of functions) {
   const matrix = readMatrix(fn);
