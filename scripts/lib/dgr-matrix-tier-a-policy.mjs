@@ -19,32 +19,24 @@ export function hasIataDgrSourceIdentity(value) {
     .replace(/\s+/g, " ")
     .trim();
 
-  // Deterministic provenance syntax only. `DGR` is the repository's canonical
-  // shorthand for the IATA Dangerous Goods Regulations, but it is accepted as
-  // source-family identity only when it is itself the source lead (optionally
-  // prefixed by IATA or a controlled governance-state label). A `DGR` token
-  // embedded in another named source such as "Company DGR Manual" or "Local
-  // DGR Guide" must not be promoted to direct IATA Tier-A provenance.
-  const shorthandMatch = text.match(
-    /^(?:(?:SOURCE VERIFIED|FROZEN FR|VERIFIED|CONFIRMED|DIRECT TIER[- ]?A|TIER[- ]?A)\s*(?:[-—:]\s*)?)*(?:IATA\s+)?DGR\b/i,
+  // Deterministic provenance syntax only. Both the repository's canonical DGR
+  // shorthand and the spelled-out official title must themselves be the source
+  // lead (optionally prefixed by a controlled governance-state label). Merely
+  // mentioning the official title inside another named source such as a company
+  // manual or local guide is not direct IATA Tier-A provenance.
+  const sourceLeadMatch = text.match(
+    /^(?:(?:SOURCE VERIFIED|FROZEN FR|VERIFIED|CONFIRMED|DIRECT TIER[- ]?A|TIER[- ]?A)\s*(?:[-—:]\s*)?)*(?:(?:IATA\s+)?DGR\b|IATA\s+Dangerous\s+Goods\s+Regulations?\b)/i,
   );
-  let shorthand = Boolean(shorthandMatch);
+  if (!sourceLeadMatch) return false;
 
-  if (shorthandMatch) {
-    // A lead-position `DGR` token is not sufficient by itself. Without this
-    // binding, a third-party title such as `DGR Company Manual 67th Edition
-    // 2026 §5.0.1` can masquerade as the canonical IATA DGR shorthand simply
-    // because it begins with DGR. Require the current-edition marker to follow
-    // the controlled source lead directly, allowing punctuation/spacing only.
-    const afterLead = text.slice(shorthandMatch[0].length);
-    shorthand = /^\s*(?:[-—:,]\s*)?67(?:th|e|ème|eme)\b/i.test(afterLead);
-  }
-
-  return Boolean(
-    shorthand ||
-      /\bIATA\b.{0,48}\bDangerous\s+Goods\s+Regulations?\b/i.test(text) ||
-      /\bDangerous\s+Goods\s+Regulations?\b.{0,48}\bIATA\b/i.test(text),
-  );
+  // A source lead is not sufficient by itself. Without edition binding, a
+  // third-party title such as `DGR Company Manual 67th Edition 2026 ...` or
+  // `IATA Dangerous Goods Regulations Training Manual 67th Edition 2026 ...`
+  // can masquerade as the official source simply because it contains the right
+  // words. Require the current-edition marker to follow the controlled source
+  // lead directly, allowing punctuation/spacing only.
+  const afterLead = text.slice(sourceLeadMatch[0].length);
+  return /^\s*(?:[-—:,]\s*)?67(?:th|e|ème|eme)\b/i.test(afterLead);
 }
 
 function hasEdition67(value) {
