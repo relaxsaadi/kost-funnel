@@ -6,6 +6,7 @@ import {
   hasCurrentEdition2026,
   hasCurrentEdition2026WithConcreteLocator,
   hasIataDgrSourceIdentity,
+  hasNonDirectItemEvidence,
   isVerifiedFrState,
   validateTierAEvidenceForFrState,
 } from "./lib/dgr-matrix-tier-a-policy.mjs";
@@ -30,6 +31,10 @@ assert.equal(hasIataDgrSourceIdentity("ICAO DGR Guide 67th Edition 2026 § 5.0.1
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026"), false);
+assert.equal(hasNonDirectItemEvidence("Representative sample of this citation pattern was checked"), true);
+assert.equal(hasNonDirectItemEvidence("This item's own specific citation was not independently re-read this pass"), true);
+assert.equal(hasNonDirectItemEvidence("Citation was used as-is and follows the same verified batch pattern"), true);
+assert.equal(hasNonDirectItemEvidence("Direct item verification against IATA DGR 67th Edition 2026 §1.1"), false);
 
 assert.equal(
   hasCurrentEdition2026("DGR 66th Edition 2025 §1.1; internal reference 67th Edition 2026 §2.2"),
@@ -80,6 +85,40 @@ assert.ok(
     frVerifier: "Qualified Reviewer — 2026-09-06",
   }).length > 0,
   "current-edition wording with provisional phrase must fail",
+);
+
+for (const tierAEvidence of [
+  "IATA DGR 67th Edition 2026 §1.1 — representative sample of this citation pattern was independently spot-verified",
+  "IATA DGR 67th Edition 2026 §1.1 — this item's own specific citation was not independently re-read this pass",
+  "IATA DGR 67th Edition 2026 §1.1 — citation was used as-is and follows the same verified batch pattern",
+]) {
+  assert.ok(
+    errors({
+      tierAEvidence,
+      frState: "FROZEN FR / SOURCE VERIFIED",
+      frVerifier: "Qualified Reviewer — 2026-09-06",
+    }).some((error) => error.includes("representative/indirect")),
+    `${tierAEvidence} must not satisfy direct item-specific Tier-A verification`,
+  );
+}
+
+assert.ok(
+  errors({
+    tierAEvidence: "IATA DGR 67th Edition 2026 §1.1 — this item's own specific citation was not independently re-read this pass",
+    frState: "DRAFT",
+    frVerifier: "",
+  }).some((error) => error.includes("explicit non-verified evidence state")),
+  "non-item-specific evidence wording must use an explicit non-verified evidence marker even when the FR state is non-terminal",
+);
+
+assert.deepEqual(
+  errors({
+    tierAEvidence: "DRAFT — IATA DGR 67th Edition 2026 §1.1 lead only; representative sample checked, item-specific verification still required",
+    frState: "DRAFT",
+    frVerifier: "",
+  }),
+  [],
+  "explicit non-verified evidence state must remain representable without promotion",
 );
 
 assert.ok(
