@@ -23,6 +23,15 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
   COMPLAINED: "critical",
 };
 
+const PROVIDER_EVENT_LABEL: Record<string, string> = {
+  "email.sent": "envoyé",
+  "email.delivered": "livré",
+  "email.delivery_delayed": "retardé",
+  "email.bounced": "rejeté/bounce",
+  "email.complained": "plainte",
+  "email.failed": "échec",
+};
+
 function metadataAssessmentId(row: NotificationHistoryRow): number | null {
   if (!row.metadata_json) return null;
   try {
@@ -40,18 +49,9 @@ export default async function NotificationsPage({
 }) {
   const session = await guardPage("administrator", "auditor", "pedagogical_manager");
   const { status, event, q, companyId, dateFrom, dateTo } = await searchParams;
-  // Frontière multi-client (lib/tenant-scope.ts) — un responsable
-  // pédagogique ne voit que ses propres notifications (lui-même + ses
-  // candidats), jamais celles d'un autre client ; réutilise EXACTEMENT le
-  // même prédicat que "Sessions actives" (même périmètre logique : les
-  // comptes visibles d'un responsable).
   const userIdsOrNull = scopedUserIdsForSessionsOrNull(session);
   const canWrite = session.role !== "auditor";
   const isManager = session.role === "pedagogical_manager";
-  // Mission "ADMIN/CLIENT/CANDIDATE UX IMPROVEMENTS" (2026-08-30) §12-13 —
-  // même périmètre que /results pour la liste déroulante elle-même (jamais
-  // proposer à un responsable un client hors de son périmètre, même si le
-  // résultat de la requête filtrée serait de toute façon vide).
   const companies = isManager ? listCompaniesForManager(session.userId) : listCompanies();
 
   const rows = listNotificationHistory({
@@ -76,7 +76,7 @@ export default async function NotificationsPage({
             <input id="q" name="q" defaultValue={q ?? ""} className="w-full rounded-md border border-border-default bg-surface-base px-3 py-1.5 text-[13px]" />
           </div>
           <div>
-            <label htmlFor="status" className="mb-1 block text-[12px] font-medium text-text-secondary">Statut</label>
+            <label htmlFor="status" className="mb-1 block text-[12px] font-medium text-text-secondary">Statut / preuve fournisseur</label>
             <select id="status" name="status" defaultValue={status ?? ""} className="w-full rounded-md border border-border-default bg-surface-base px-3 py-1.5 text-[13px]">
               <option value="">Tous</option>
               {Object.keys(STATUS_BADGE).map((s) => (
@@ -93,10 +93,6 @@ export default async function NotificationsPage({
               ))}
             </select>
           </div>
-          {/* Mission "ADMIN/CLIENT/CANDIDATE UX IMPROVEMENTS" (2026-08-30)
-              §12-13 — Client/Date absents jusqu'ici alors que le backend
-              les supportait déjà en partie (companyId) ou pas du tout
-              (dateFrom/dateTo, ajoutés dans lib/email/history.ts). */}
           <div>
             <label htmlFor="companyId" className="mb-1 block text-[12px] font-medium text-text-secondary">Client</label>
             <select id="companyId" name="companyId" defaultValue={companyId ?? ""} className="w-full rounded-md border border-border-default bg-surface-base px-3 py-1.5 text-[13px]">
@@ -128,7 +124,7 @@ export default async function NotificationsPage({
       <Card>
         <CardHeader
           title={`${rows.length} notification(s)`}
-          description="200 plus récentes maximum — jamais le contenu de l'email (voir /admin/email-preview pour un aperçu synthétique)"
+          description="200 plus récentes maximum — l'état affiché tient compte de toute preuve Resend signée ; une plainte ou un bounce observé ne peut pas être masqué par un autre terminal."
         />
         {rows.length === 0 ? (
           <EmptyState icon={MailWarning} title="Aucune notification" description="Aucun événement ne correspond à ces filtres." />
@@ -141,16 +137,17 @@ export default async function NotificationsPage({
                   <th className="pb-2 pr-3 font-medium">Destinataire</th>
                   <th className="pb-2 pr-3 font-medium">Événement</th>
                   <th className="pb-2 pr-3 font-medium">Sujet</th>
-                  <th className="pb-2 pr-3 font-medium">Statut</th>
-                  <th className="pb-2 pr-3 font-medium">Détail</th>
+                  <th className="pb-2 pr-3 font-medium">État</th>
+                  <th className="pb-2 pr-3 font-medium">Cycle fournisseur</th>
                   {canWrite && <th className="pb-2 font-medium">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((n) => {
                   const assessmentId = metadataAssessmentId(n);
+                  const displayedStatus = n.provider_outcome ?? n.status;
                   return (
-                    <tr key={n.id} className="border-b border-border-subtle last:border-0">
+                    <tr key={n.id} className="border-b border-border-subtle last:border-0 align-top">
                       <td className="py-1.5 pr-3 font-mono text-[11.5px] text-text-tertiary">{formatAlgeriaDateTime(n.created_at, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
                       <td className="py-1.5 pr-3 text-text-primary">
                         {n.full_name ?? "—"}
@@ -159,10 +156,29 @@ export default async function NotificationsPage({
                       <td className="py-1.5 pr-3 text-text-secondary">{n.event_type}</td>
                       <td className="py-1.5 pr-3 text-text-secondary">{n.subject}</td>
                       <td className="py-1.5 pr-3">
-                        <StatusBadge status={STATUS_BADGE[n.status] ?? "neutral"}>{n.status}</StatusBadge>
+                        <StatusBadge status={STATUS_BADGE[displayedStatus] ?? "neutral"}>{displayedStatus}</StatusBadge>
+                        {n.provider_outcome && n.provider_outcome !== n.status && (
+                          <div className="mt-1 text-[10.5px] text-text-tertiary">snapshot local : {n.status}</div>
+                        )}
                       </td>
                       <td className="py-1.5 pr-3 text-text-tertiary">
-                        {n.failure_reason_safe ?? (n.retry_count > 0 ? `${n.retry_count} tentative(s)` : "—")}
+                        {n.provider_events.length > 0 ? (
+                          <div className="flex min-w-[180px] flex-col gap-0.5">
+                            {n.provider_events.slice(-4).map((providerEvent, index) => (
+                              <div key={`${providerEvent.provider_event_type}-${providerEvent.provider_created_at}-${index}`}>
+                                <span className="font-medium text-text-secondary">
+                                  {PROVIDER_EVENT_LABEL[providerEvent.provider_event_type] ?? providerEvent.provider_event_type}
+                                </span>
+                                {" · "}
+                                {formatAlgeriaDateTime(providerEvent.provider_created_at, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                              </div>
+                            ))}
+                            {n.provider_events.length > 4 && <div>+{n.provider_events.length - 4} événement(s)</div>}
+                            {n.failure_reason_safe && <div className="mt-1">{n.failure_reason_safe}</div>}
+                          </div>
+                        ) : (
+                          n.failure_reason_safe ?? (n.retry_count > 0 ? `${n.retry_count} tentative(s)` : "—")
+                        )}
                       </td>
                       {canWrite && (
                         <td className="py-1.5">
