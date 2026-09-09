@@ -5,8 +5,10 @@
  * source/competency matrices.
  *
  * This checker validates only governance evidence attached to states that
- * claim FR source verification or completed EN bilingual review. Explicit
- * DRAFT / SOURCE GAP / SOURCE CONFLICT / PENDING states remain representable.
+ * claim FR source verification or completed EN bilingual review. A terminal
+ * EN review requires a terminal FR source-verification state on the same row,
+ * and EN review chronology may not predate FR verification. Explicit DRAFT /
+ * SOURCE GAP / SOURCE CONFLICT / PENDING states remain representable.
  * It never validates licensed IATA text, changes review state, or infers
  * ANAC/IATA approval.
  */
@@ -75,6 +77,14 @@ function strictCivilDate(value) {
 
 function todayIsoUtc() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function singleReviewDate(value = "") {
+  const dates = [...normalize(value).matchAll(isoDateRe)].map((match) => match[0]);
+  if (dates.length !== 1) return "";
+  const date = dates[0];
+  if (!strictCivilDate(date) || date > todayIsoUtc()) return "";
+  return date;
 }
 
 function reviewerEvidenceErrors(value, label, { requireDgr = false, requireBilingualDgr = false } = {}) {
@@ -219,20 +229,32 @@ function validateMatrixText(text, fn, artifact) {
       const frReviewer = cells[frReviewerIndex] ?? "";
       const enState = cells[enStateIndex] ?? "";
       const enReviewer = cells[enReviewerIndex] ?? "";
+      const frVerified = claimsFrVerified(frState);
+      const enComplete = claimsEnComplete(enState);
 
-      if (claimsFrVerified(frState)) {
+      if (frVerified) {
         errors.push(
           ...reviewerEvidenceErrors(frReviewer, `${artifact}: task ${taskId} FR verification`, {
             requireDgr: true,
           }),
         );
       }
-      if (claimsEnComplete(enState)) {
+      if (enComplete) {
         errors.push(
           ...reviewerEvidenceErrors(enReviewer, `${artifact}: task ${taskId} EN bilingual review`, {
             requireBilingualDgr: true,
           }),
         );
+        if (!frVerified) {
+          errors.push(`${artifact}: task ${taskId} terminal EN bilingual review requires terminal FR source verification on the same matrix row`);
+        }
+      }
+      if (frVerified && enComplete) {
+        const frDate = singleReviewDate(frReviewer);
+        const enDate = singleReviewDate(enReviewer);
+        if (frDate && enDate && enDate < frDate) {
+          errors.push(`${artifact}: task ${taskId} EN bilingual review date ${enDate} predates FR source-verification date ${frDate}`);
+        }
       }
     }
   }
@@ -273,6 +295,26 @@ function runFixtures() {
     enState: "BILINGUAL TECHNICAL REVIEW REQUIRED",
     enReviewer: "pending",
   }, false);
+  expectFixture("fr-terminal-en-pending", {
+    ...valid,
+    enState: "BILINGUAL TECHNICAL REVIEW REQUIRED",
+    enReviewer: "pending",
+  }, false);
+  expectFixture("en-terminal-fr-pending", {
+    ...valid,
+    frState: "DRAFT / NOT YET VERIFIED",
+    frReviewer: "pending",
+  }, true);
+  expectFixture("ordered-fr-then-en", {
+    ...valid,
+    frReviewer: "Jane Doe — DGR/CBTA Instructor — 2026-09-05",
+    enReviewer: "John Smith — Bilingual DGR/CBTA Reviewer FR/EN — 2026-09-06",
+  }, false);
+  expectFixture("en-before-fr", {
+    ...valid,
+    frReviewer: "Jane Doe — DGR/CBTA Instructor — 2026-09-06",
+    enReviewer: "John Smith — Bilingual DGR/CBTA Reviewer FR/EN — 2026-09-05",
+  }, true);
   expectFixture("fr-no-dgr-credential", { ...valid, frReviewer: "Jane Doe — Trainer — 2026-09-06" }, true);
   expectFixture("fr-dangerous-goods-credential", { ...valid, frReviewer: "Jane Doe — Dangerous Goods Instructor — 2026-09-06" }, false);
   expectFixture("fr-impossible-date", { ...valid, frReviewer: "Jane Doe — DGR Instructor — 2026-02-31" }, true);
