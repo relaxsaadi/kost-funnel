@@ -28,6 +28,9 @@ assert.equal(hasIataDgrSourceIdentity("Dangerous Goods Regulations 67th Edition 
 assert.equal(hasIataDgrSourceIdentity("Company DGR Manual 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasIataDgrSourceIdentity("Local DGR Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasIataDgrSourceIdentity("ICAO DGR Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("DGR Company Manual 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("DGR Local Guide 67th Edition 2026 § 5.0.1.2(c)"), false);
+assert.equal(hasIataDgrSourceIdentity("IATA DGR Company Manual 67th Edition 2026 § 5.0.1.2(c)"), false);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 § 5.0.1.2(c)"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 Table 2.3.A"), true);
 assert.equal(hasConcreteLocator("IATA DGR 67th Edition 2026 5.0.1.2(c)"), true);
@@ -60,6 +63,16 @@ assert.equal(
   hasCurrentEdition2026("Company DGR Manual 67th Edition 2026 §2.2"),
   false,
   "a third-party DGR-named manual must not satisfy direct current IATA DGR identity",
+);
+assert.equal(
+  hasCurrentEdition2026("DGR Company Manual 67th Edition 2026 §2.2"),
+  false,
+  "a third-party title beginning with DGR must not satisfy direct current IATA DGR identity",
+);
+assert.equal(
+  hasCurrentEdition2026WithConcreteLocator("IATA DGR Local Guide 67th Edition 2026 §2.2"),
+  false,
+  "an IATA-DGR-prefixed local guide must not satisfy direct current IATA DGR evidence",
 );
 assert.equal(
   hasCurrentEdition2026WithConcreteLocator("Local DGR Guide 67th Edition 2026 §2.2"),
@@ -205,6 +218,9 @@ for (const tierAEvidence of [
   "Dangerous Goods Regulations 67th Edition 2026 § 5.0.1.2(c)",
   "Company DGR Manual 67th Edition 2026 § 5.0.1.2(c)",
   "Local DGR Guide 67th Edition 2026 § 5.0.1.2(c)",
+  "DGR Company Manual 67th Edition 2026 § 5.0.1.2(c)",
+  "DGR Local Guide 67th Edition 2026 § 5.0.1.2(c)",
+  "IATA DGR Company Manual 67th Edition 2026 § 5.0.1.2(c)",
 ]) {
   assert.ok(
     errors({

@@ -25,9 +25,20 @@ export function hasIataDgrSourceIdentity(value) {
   // prefixed by IATA or a controlled governance-state label). A `DGR` token
   // embedded in another named source such as "Company DGR Manual" or "Local
   // DGR Guide" must not be promoted to direct IATA Tier-A provenance.
-  const shorthand = /^(?:(?:SOURCE VERIFIED|FROZEN FR|VERIFIED|CONFIRMED|DIRECT TIER[- ]?A|TIER[- ]?A)\s*(?:[-—:]\s*)?)*(?:IATA\s+)?DGR\b/i.test(
-    text,
+  const shorthandMatch = text.match(
+    /^(?:(?:SOURCE VERIFIED|FROZEN FR|VERIFIED|CONFIRMED|DIRECT TIER[- ]?A|TIER[- ]?A)\s*(?:[-—:]\s*)?)*(?:IATA\s+)?DGR\b/i,
   );
+  let shorthand = Boolean(shorthandMatch);
+
+  if (shorthandMatch) {
+    // A lead-position `DGR` token is not sufficient by itself. Without this
+    // binding, a third-party title such as `DGR Company Manual 67th Edition
+    // 2026 §5.0.1` can masquerade as the canonical IATA DGR shorthand simply
+    // because it begins with DGR. Require the current-edition marker to follow
+    // the controlled source lead directly, allowing punctuation/spacing only.
+    const afterLead = text.slice(shorthandMatch[0].length);
+    shorthand = /^\s*(?:[-—:,]\s*)?67(?:th|e|ème|eme)\b/i.test(afterLead);
+  }
 
   return Boolean(
     shorthand ||
