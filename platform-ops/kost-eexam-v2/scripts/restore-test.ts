@@ -2,8 +2,9 @@
 // ne suffit pas ». Restaure la dernière sauvegarde réussie explicitement
 // journalisée dans un répertoire temporaire isolé et jetable (jamais un
 // chemin partagé avec la production), vérifie sa taille + son SHA-256
-// enregistrés, l'intégrité SQLite native + les clés étrangères + les lignes
-// des tables clés, PUIS supprime la copie — que le test réussisse ou échoue.
+// enregistrés AVANT ouverture SQLite, puis l'intégrité SQLite native + les
+// clés étrangères + les lignes des tables clés, PUIS supprime la copie — que
+// le test réussisse ou échoue.
 import { DatabaseSync } from "node:sqlite";
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,7 +15,8 @@ import {
   artifactNameFromDetail,
   assertRecordedSha256,
   assertRecordedSize,
-  verifyBackupArtifact,
+  fingerprintBackupArtifact,
+  verifyBackupSqliteIntegrity,
 } from "../lib/backup-integrity";
 
 const KEY_TABLES = ["users", "companies", "groups", "questions", "assessments", "attempts", "results", "audit_logs"];
@@ -53,12 +55,15 @@ function main() {
     const restoredPath = join(isolatedDir, "restored.db");
     copyFileSync(backupFile, restoredPath);
 
-    // Vérifier la copie réellement restaurée lie le drill aux octets testés,
-    // y compris si le fichier source changeait entre sélection et copie.
-    const verification = verifyBackupArtifact(restoredPath);
+    // Empreinter d'abord la copie réellement restaurée et la comparer au
+    // journal AVANT toute ouverture SQLite. Le drill est ainsi lié aux octets
+    // enregistrés et échoue fermé sur taille/SHA absents ou divergents.
+    const verification = fingerprintBackupArtifact(restoredPath);
     assertRecordedSize(verification.sizeBytes, backupRecord.size_bytes);
     assertRecordedSha256(verification.sha256, backupRecord.sha256);
     verifiedSha256 = verification.sha256;
+
+    verifyBackupSqliteIntegrity(restoredPath);
 
     const restored = new DatabaseSync(restoredPath, { readOnly: true });
     const counts: Record<string, number> = {};
