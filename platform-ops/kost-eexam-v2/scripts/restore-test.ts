@@ -18,6 +18,14 @@ import {
 
 const KEY_TABLES = ["users", "companies", "groups", "questions", "assessments", "attempts", "results", "audit_logs"];
 
+function safeError(err: unknown, sensitivePaths: Array<string | null>): string {
+  let detail = err instanceof Error ? err.message : String(err);
+  for (const path of sensitivePaths) {
+    if (path) detail = detail.replaceAll(path, "<redacted-path>");
+  }
+  return detail;
+}
+
 function main() {
   const backupDir = resolve(process.cwd(), process.env.BACKUP_DIR ?? "./data/backups");
   const start = Date.now();
@@ -68,7 +76,7 @@ function main() {
     console.log(detail);
   } catch (err) {
     status = "failure";
-    detail = err instanceof Error ? err.message : String(err);
+    detail = safeError(err, [backupDir, isolatedDir]);
     console.error("Échec du test de restauration :", detail);
   } finally {
     if (isolatedDir) rmSync(isolatedDir, { recursive: true, force: true });
